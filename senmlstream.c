@@ -58,7 +58,7 @@ boolean SenMLStream::parseHeader() {
             string k(key);
             printf("Got key %s\n",key);
             
-            if (k == "bn"){
+            if (k == SML_BASENAME){
                 if (!cmp_read_str_size(&cmp, &string_size))
                     return false;
                 if (!_stream->read((uint8_t*)val, string_size))
@@ -82,8 +82,6 @@ boolean SenMLStream::parseRecord() {
 
     if (!sR)
         return false;
-    printf("Parse record\n");
-    //Read Name
 
         if (cmp_read_map(&cmp,&msize)){
             for(uint32_t j=0; j<msize;j++){
@@ -119,10 +117,10 @@ boolean SenMLStream::parseRecord() {
                             if (k == SML_VALUE ) {
                                 sR->setValue(obj.as.flt);
                             } else
-                            if (k == "min" ) {
+                            if (k == SML_MIN ) {
                                 sR->setMin(obj.as.flt);
                             } else
-                            if (k == "max" ) {
+                            if (k == SML_MAX ) {
                                 sR->setMin(obj.as.flt);
                             }
                            break;
@@ -160,7 +158,7 @@ boolean SenMLStream::loop() {
                     return false;
                 printf("parsed record %d\n",i);
             }
-                fflush(stdout); 
+            fflush(stdout); 
     }
     return available();
 }

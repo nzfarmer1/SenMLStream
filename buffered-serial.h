@@ -12,13 +12,12 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
     FixedQueue<MAX_PACKET_SIZE> q;   
  
   public:
-    static   const uint8_t BEG = 0x12;
+    static const uint8_t BEG = 0x12;
     static const uint8_t END = 0x13;
     static const uint8_t DLE = 0x7D;
 
     
     BufferedEscapedLinuxSerialWrapper() : LinuxSerial() {
-  //      _dev = &dev;
         inPacket = false;
         isPacket=false;
         q.clear();
@@ -33,7 +32,6 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
         uint16_t m=len;
         while(!q.isEmpty() && len >=1){
             buffer[m-len] = q.dequeue();
-            printf("=>%x\n",buffer[m-len]);
             len--;
         }
         if (m > len && q.isEmpty())
@@ -91,7 +89,7 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
         //if (!ready())
           // return 0; 
         return LinuxSerial::write(val);
-    };  // Call a function on the stored object pointer
+    };
     
     int write(const uint8_t * data, int len) {
         uint8_t * _data = (uint8_t*)data;
