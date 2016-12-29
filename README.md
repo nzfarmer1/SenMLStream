@@ -10,10 +10,10 @@ https://github.com/nzfarmer1/arduino-serial
 
 Running tests
 
-cd  test && npm install .
-Run arduino-serial/socat.sh
-Run nodejs/client.js senml.js
-Run test/test
+- cd  test && npm install .
+- Run arduino-serial/socat.sh
+- Run nodejs/client.js senml.js
+- Run test/test
 
 Building:
 
