@@ -18,6 +18,8 @@ using namespace std;
 #define SML_VALUE "v"
 #define SML_UNIT "u"
 #define SML_BASENAME "bn"
+#define SML_MIN "min"
+#define SML_MAX "max"
 
 class SenMLHeader {
     protected:

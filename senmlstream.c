@@ -104,20 +104,19 @@ boolean SenMLStream::parseRecord() {
                         case CMP_TYPE_FIXSTR:
                             if (_stream->read((uint8_t*)val, obj.as.str_size)) {
                                 val[obj.as.str_size] = '\0';
-            
                                 printf("%s\n",val);
             
-                                if (k == "n" ){
+                                if (k == SML_NAME ){
                                     sR->setName(string(val));
                                 } else
-                                if (k == "u" ){
+                                if (k == SML_UNIT ){
                                     sR->setUnit(string(val));
                                 }
                             }
                             break;
                         case CMP_TYPE_FLOAT:
                             printf("%f\n",obj.as.flt);
-                            if (k == "v" ) {
+                            if (k == SML_VALUE ) {
                                 sR->setValue(obj.as.flt);
                             } else
                             if (k == "min" ) {
