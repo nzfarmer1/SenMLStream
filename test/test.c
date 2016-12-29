@@ -17,12 +17,13 @@ int main(int argc, char **argv){
             s.reset();
             s.addRecord(&r);
 	    s.print();	
-            s.writeSenML(&r);
-            s.appendMaps(3);
+            s.writeSenML(&r,1); // default 1 record
+            s.appendRecord(3); // 3 maps
             s.appendMap(SML_NAME,r.getName());
             s.appendMap(SML_VALUE,r.getValue());
             s.appendMap(SML_UNIT,r.getUnit());
             s.flush();
+            s.print();
         }
 
     return 0;

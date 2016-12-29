@@ -87,7 +87,10 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
     
     size_t write(uint8_t val) {
         //if (!ready())
-          // return 0; 
+          // return 0;
+          #ifdef SMLDEBUG
+          printf("==>%x\n",val);
+          #endif
         return LinuxSerial::write(val);
     };
     

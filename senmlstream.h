@@ -54,6 +54,7 @@ class SenMLRecord {
           _b = "";
           _n = "";
           _v = 0;
+          _u = "";
           _vd = NULL;
           _sz = 0;
         };
@@ -63,6 +64,7 @@ class SenMLRecord {
             this->_b  = smin->_b;
             this->_n  = smin->_n;
             this->_v  = smin->_v;
+            this->_u  = smin->_u;
             this->_vd = smin->_vd;
             this->_sz = smin->_sz;
         };
@@ -138,7 +140,7 @@ public:
             return false;
 
         if (sH->getBN() != ""){
-            if (!appendMaps(1)) // Change to check for valid values first
+            if (!appendRecord(1)) // Change to check for valid values first
                 return false;
             if (!appendMap(string(SML_BASENAME),sH->getBN()))
                 return false;
@@ -147,13 +149,16 @@ public:
         return true; // Fix
     };
     
-    bool appendMaps(uint8_t nmaps){
+    bool appendRecord(uint8_t nmaps){
         return cmp_write_map(&cmp, nmaps);
     };
 
     bool appendMap(const string key,string val){
-        return cmp_write_str(&cmp, key.c_str(),key.length()) && 
-               cmp_write_str(&cmp, val.c_str(),val.length());
+        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+            return false;
+        if (!cmp_write_str(&cmp,val.c_str(),val.length()))
+            return false;
+        return true;
     };
 
     bool appendMap(const string key,float val){

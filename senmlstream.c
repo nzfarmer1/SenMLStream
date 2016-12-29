@@ -47,7 +47,9 @@ boolean SenMLStream::parseHeader() {
     
     if (cmp_read_map(&cmp,&msize)){
         for(uint32_t j=0; j<msize;j++){
+            #ifdef SMLDEBUG
             printf("msize =>%d\n",msize);
+            #endif
             if (msize >2)
                 continue; //wtf?
             if (!cmp_read_str_size(&cmp, &string_size))
@@ -56,14 +58,18 @@ boolean SenMLStream::parseHeader() {
                 return false;
             key[string_size] = '\0';
             string k(key);
+            #ifdef SMLDEBUG
             printf("Got key %s\n",key);
+            #endif
             
             if (k == SML_BASENAME){
                 if (!cmp_read_str_size(&cmp, &string_size))
                     return false;
                 if (!_stream->read((uint8_t*)val, string_size))
                     return false;
+            #ifdef SMLDEBUG
                 printf("Setting BN %s\n",val);
+            #endif
                 val[string_size] = '\0';
                 sH.setBN(string(val));
             }
@@ -91,18 +97,26 @@ boolean SenMLStream::parseRecord() {
                     return false;
                 key[string_size] = '\0';
                 string k(key);
+                #ifdef SMLDEBUG
                 printf("parse record - got key %s\n",key);
+                #endif
     
                 if (cmp_read_object(&cmp, &obj)) {
+                   #ifdef SMLDEBUG
                     printf("Object found %x %d\n",obj.type,obj.as.str_size);
+                    #endif
                     switch(obj.type) {
                         case CMP_TYPE_POSITIVE_FIXNUM:
-                            printf("%d\n",obj.as.u8);
+                            #ifdef SMLDEBUG
+                            printf("Got FIXNUM: %d\n",obj.as.u8);
+                            #endif 
                             break;
                         case CMP_TYPE_FIXSTR:
                             if (_stream->read((uint8_t*)val, obj.as.str_size)) {
                                 val[obj.as.str_size] = '\0';
-                                printf("%s\n",val);
+                                #ifdef SMLDEBUG
+                                printf("Got FIXSTR %s\n",val);
+                                #endif
             
                                 if (k == SML_NAME ){
                                     sR->setName(string(val));
@@ -113,7 +127,9 @@ boolean SenMLStream::parseRecord() {
                             }
                             break;
                         case CMP_TYPE_FLOAT:
+                            #ifdef SMLDEBUG
                             printf("%f\n",obj.as.flt);
+                            #endif
                             if (k == SML_VALUE ) {
                                 sR->setValue(obj.as.flt);
                             } else
@@ -151,12 +167,16 @@ boolean SenMLStream::loop() {
             if (!i){
                 if (!parseHeader())
                     return false;
+                #ifdef SMLDEBUG
                 printf("parsed header\n");
+                #endif
             } 
             if (i > 0) {      
                 if (!parseRecord())
                     return false;
+                #ifdef SMLDEBUG
                 printf("parsed record %d\n",i);
+                #endif
             }
             fflush(stdout); 
     }
