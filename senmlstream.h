@@ -14,6 +14,11 @@ using namespace std;
 #define boolean bool
 #define MAX_SENML_RECS 4
 
+#define SML_NAME "n"
+#define SML_VALUE "v"
+#define SML_UNIT "u"
+#define SML_BASENAME "bn"
+
 class SenMLHeader {
     protected:
         string _bn;
@@ -133,7 +138,7 @@ public:
         if (sH->getBN() != ""){
             if (!appendMaps(1)) // Change to check for valid values first
                 return false;
-            if (!appendMap(string("bn"),sH->getBN()))
+            if (!appendMap(string(SML_BASENAME),sH->getBN()))
                 return false;
         }   
         _sending = true;

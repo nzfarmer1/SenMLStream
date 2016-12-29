@@ -19,9 +19,9 @@ int main(int argc, char **argv){
 	    s.print();	
             s.writeSenML(&r);
             s.appendMaps(3);
-            s.appendMap("n",r.getName());
-            s.appendMap("v",r.getValue());
-            s.appendMap("u",r.getUnit());
+            s.appendMap(SML_NAME,r.getName());
+            s.appendMap(SML_VALUE,r.getValue());
+            s.appendMap(SML_UNIT,r.getUnit());
             s.flush();
         }
 
