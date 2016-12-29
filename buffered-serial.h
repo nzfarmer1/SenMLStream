@@ -91,6 +91,8 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
           #ifdef SMLDEBUG
           printf("==>%x\n",val);
           #endif
+        if (isControl(val))
+            LinuxSerial::write(DLE);
         return LinuxSerial::write(val);
     };
     
@@ -107,11 +109,11 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
         
     
     void beginPacket() {
-        write(BEG);
+        LinuxSerial::write(BEG);
     }
 
     void endPacket() {
-        write(END);
+        LinuxSerial::write(END);
         this->flush();
     }
 
