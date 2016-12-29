@@ -3,8 +3,8 @@
       const s = new require('stream').PassThrough({objectMode:true});
       const bl = new require('bl');
       const fs = require("fs");
-      const en = require("../").encode();
-      const dc = require("../").decode();
+      const en = require("simplepacket").encode();
+      const dc = require("simplepacket").decode();
       const stream = require("stream");
 
       var obuffer = new stream.PassThrough();
