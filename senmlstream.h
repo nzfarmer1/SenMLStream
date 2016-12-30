@@ -3,24 +3,25 @@
 #define SENMLSTREAM_H
 
 #ifdef _SIMULATOR // LINUX
+
 #include <string>
 using namespace std;
-#else // DUINO
-#include <WSTring.h>
-#define string String
-#endif
-
-#ifdef _SIMULATOR
 #include "buffered-serial.h"
 #include "sys/types.h"
 #include "cmp.h"
 #define boolean bool
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
-#else
+
+#else // DUINO
+
+#include <WSTring.h>
+#define string String
 #include <xarq.h>
 #include <cmp.h>
 #define StreamWrapper BufferedEscapedXStreamWrapper
+
 #endif
+
 
 
 #define MAX_SENML_RECS 4
@@ -183,7 +184,7 @@ public:
     };
 
     bool appendMap(const string key, const uint8_t * p, uint32_t s){
-        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+        if (!cmp_write_str(&cmp, key.c_str(), key.length()))
             return false;
 
         if (!cmp_write_bin_marker(&cmp, s))
@@ -192,7 +193,7 @@ public:
     };
 
     bool appendBinary(const uint8_t * p, size_t s,boolean end = false){
-        if (!cmp.write(&cmp, p,s))
+        if (!cmp.write(&cmp, p, s))
             return false;
         if (end)
             this->flush();

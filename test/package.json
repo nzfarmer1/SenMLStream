@@ -1,0 +1,30 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "Test client for SenMLStream",
+  "main": "client.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "./nodejs client.js senml.js"
+  },
+  "dependencies": {
+	"simplepacket":"git+https://github.com/nzfarmer1/simplepacket",
+	"msgpack5":""
+   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nzfarmer1/SenMLStream.git"
+  },
+  "keywords": [
+    "simple",
+    "packet"
+  ],
+  "author": "Andrew McClure (AgSense Ltd)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nzfarmer1/SenMLStream/issues"
+  },
+  "homepage": "https://github.com/nzfarmer1/SenMLStream#readme"
+}
