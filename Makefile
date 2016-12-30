@@ -49,7 +49,7 @@ all: test
 
 
 senmlstream: senmlstream.h
-	$(CC) $(CFLAGS) $(LDFLAGS) -c -o senmlstream.o senmlstream.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -c -o senmlstream.o senmlstream.cpp
 
 FixedQueue: FixedQueue.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o FixedQueue.o FixedQueue.h
