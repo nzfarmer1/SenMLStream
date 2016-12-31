@@ -25,8 +25,8 @@ using namespace std;
 
 
 #define MAX_SENML_RECS 4
-#define SML_KEY_SIZE 3
-#define SML_VAL_SIZE 255
+#define SML_KEY_SIZE 2
+#define SML_VAL_SIZE 254
 
 #define SML_NAME "n"
 #define SML_VALUE "v"
@@ -44,8 +44,6 @@ using namespace std;
 
 
 #define IF_KEY(k,v) (string(k) == v)
-#define MIN(x,y) ((x)<(y)?(x):(y))
-#define MAX(x,y) ((x)>(y)?(x):(y))
 
 
 class SenMLValueInfo {

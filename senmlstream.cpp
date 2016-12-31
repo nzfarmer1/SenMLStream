@@ -40,7 +40,7 @@ void SenMLStream::setMaxBufAllowed(unsigned int max) {
 
 bool SenMLStream::parseHeader() {
     uint32_t string_size,msize;
-    char key[SML_KEY_SIZE],val[SML_VAL_SIZE];
+    char key[SML_KEY_SIZE+1],val[SML_VAL_SIZE+1];
 
     sH.reset();
     
@@ -87,7 +87,7 @@ bool SenMLStream::parseHeader() {
 bool SenMLStream::parseVI(SenMLValueInfo &vi,uint8_t msize) {
     uint32_t string_size;
     cmp_object_t obj;
-    char key[SML_KEY_SIZE];
+    char key[SML_KEY_SIZE+1];
     printf("Parse VI\n");
         
     for(uint32_t j=0; j<msize;j++){
@@ -133,7 +133,7 @@ bool SenMLStream::parseVI(SenMLValueInfo &vi,uint8_t msize) {
 bool SenMLStream::parseRecord() {
     uint32_t msize,string_size;
     cmp_object_t obj;
-    char key[SML_KEY_SIZE],val[SML_VAL_SIZE];
+    char key[SML_KEY_SIZE+1],val[SML_VAL_SIZE+1];
     
     SenMLRecord * sR = createRecord();
 
