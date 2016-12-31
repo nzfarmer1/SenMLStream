@@ -9,10 +9,10 @@ using namespace std;
 #include "buffered-serial.h"
 #include "sys/types.h"
 #include "cmp.h"
-#define boolean bool
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
 #else // DUINO
+#define bool boolean
 
 #include <WSTring.h>
 #define string String
@@ -25,13 +25,41 @@ using namespace std;
 
 
 #define MAX_SENML_RECS 4
+#define SML_KEY_SIZE 3
+#define SML_VAL_SIZE 255
 
 #define SML_NAME "n"
 #define SML_VALUE "v"
 #define SML_UNIT "u"
 #define SML_BASENAME "bn"
+#define SML_BASETIME "bt"
+#define SML_POSITION "pos"
 #define SML_MIN "min"
-#define SML_MAX "max"
+#define SML_MAX    "max"
+#define SML_INFO "vi"
+#define SML_VI_EXP "exp" // exposure int
+#define SML_VI_RES "res" // resolution hex
+#define SML_VI_IRC "irc" // IR Cut (boolean)
+
+
+
+#define IF_KEY(k,v) (string(k) == v)
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#define MAX(x,y) ((x)>(y)?(x):(y))
+
+
+class SenMLValueInfo {
+   public:
+    uint16_t exp;
+    uint8_t res;
+    bool  irc;
+    
+    void reset(){
+        exp = 220;
+        res = 0x1C;
+        irc = false;
+    };
+};
 
 class SenMLHeader {
     protected:
@@ -44,7 +72,7 @@ class SenMLHeader {
         SenMLHeader(string bn) { this->_bn = bn;};
         void setBN(string bn) { this->_bn = bn;};
         string getBN() { return this->_bn; };
-        void reset(){_bn=""; };
+        void reset(){_bn="";  };
 };
 
 class SenMLRecord {
@@ -53,6 +81,7 @@ class SenMLRecord {
         uint16_t _sz; // size of image
         uint8_t *_vd;
         float _min,_max,_v;
+        SenMLValueInfo _vi;
     
     protected:
         SenMLHeader *_meta;
@@ -62,17 +91,18 @@ class SenMLRecord {
         SenMLRecord(SenMLHeader * meta) { _meta = meta; };
         
         void reset() {
-          _meta = NULL;
           _b = "";
           _n = "";
           _v = 0;
           _u = "";
           _vd = NULL;
           _sz = 0;
+          _vi.reset();
         };
 
         void clone(SenMLRecord * smin) {
-            memcpy(this->_meta,smin->_meta,sizeof(_meta));
+            memcpy(_meta,smin->_meta,sizeof(*_meta));
+            memcpy(&_vi,&smin->_vi,sizeof(_vi));
             this->_b  = smin->_b;
             this->_n  = smin->_n;
             this->_v  = smin->_v;
@@ -94,6 +124,11 @@ class SenMLRecord {
         float getValue() {return _v;};
         float getMin() {return _min;};
         float getMax() {return _max;};
+        SenMLValueInfo & getValueInfo() {return _vi;};
+        void setValueInfo(SenMLValueInfo &vi) {
+                    memcpy(&_vi,&vi,sizeof(_vi));
+        };
+
 };
 
 
@@ -103,16 +138,22 @@ private:
     SenMLHeader sH;
     SenMLRecord senml[MAX_SENML_RECS];
     uint8_t numRecords;
-    boolean _sending;
+    bool _sending;
     
     cmp_ctx_t cmp;
     static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
     static size_t stream_writer(cmp_ctx_s *ctx, const void *data,
                                                 size_t count);
     StreamWrapper *_stream;
-    boolean parseHeader();
-    boolean parseRecord();
-
+    bool parseHeader();
+    bool parseRecord();
+    bool parseVI(SenMLValueInfo &vi,uint8_t msize);
+    
+    // Note current implementation is pretty crude with only a
+    // a single VI class specific to our requirements
+    // propose storing a vi record as a pointer, and subclassing the SenMLValueInfo class
+    
+ 
 public:
     void setMaxBufAllowed(unsigned int max);
     SenMLStream(StreamWrapper *stream);
@@ -129,6 +170,7 @@ public:
         if (numRecords >= MAX_SENML_RECS)
             return NULL;
         senml[numRecords].setMeta(&sH);
+        senml[numRecords].reset();
         return &senml[numRecords++];
     };
     
@@ -140,9 +182,9 @@ public:
     };
 
     void flush();
-    boolean loop();
+    bool loop();
     
-    boolean writeSenML(SenMLRecord *sR,uint8_t numRecs = 1){
+    bool writeSenML(SenMLRecord *sR,uint8_t numRecs = 1){
         SenMLHeader *sH = sR->getHeader();
         if (!sR)
             return false;
@@ -192,7 +234,7 @@ public:
         return true;
     };
 
-    bool appendBinary(const uint8_t * p, size_t s,boolean end = false){
+    bool appendBinary(const uint8_t * p, size_t s,bool end = false){
         if (!cmp.write(&cmp, p, s))
             return false;
         if (end)
@@ -212,6 +254,9 @@ public:
         printf("bn => %s\n",r->getBN().c_str());
         printf("n => %s\n",r->getName().c_str());
         printf("u => %s\n",r->getUnit().c_str());
+        printf("vi.exp => %d\n",r->getValueInfo().exp);
+        printf("vi.res => %d\n",r->getValueInfo().res);
+        printf("vi.irc => %d\n",r->getValueInfo().irc);
       }
     };
 };
