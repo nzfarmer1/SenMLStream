@@ -22,10 +22,8 @@ using namespace std;
 
 #endif
 
-
-
 #define MAX_SENML_RECS 4
-#define SML_KEY_SIZE 2
+#define SML_KEY_SIZE 3
 #define SML_VAL_SIZE 254
 
 #define SML_NAME "n"
@@ -142,6 +140,8 @@ private:
     static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
     static size_t stream_writer(cmp_ctx_s *ctx, const void *data,
                                                 size_t count);
+    StreamWrapper *Stream(){return (StreamWrapper *)cmp.buf;};
+    
     StreamWrapper *_stream;
     bool parseHeader();
     bool parseRecord();
