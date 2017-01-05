@@ -25,9 +25,12 @@ using namespace std;
 #define MAX_SENML_RECS 4
 #define SML_KEY_SIZE 3
 #define SML_VAL_SIZE 254
+#define SML_MAX_STR 254
 
 #define SML_NAME "n"
 #define SML_VALUE "v"
+#define SML_DATA_VALUE "vd"
+#define SML_BOOL_VALUE "vb"
 #define SML_UNIT "u"
 #define SML_BASENAME "bn"
 #define SML_BASETIME "bt"
@@ -38,7 +41,6 @@ using namespace std;
 #define SML_VI_EXP "exp" // exposure int
 #define SML_VI_RES "res" // resolution hex
 #define SML_VI_IRC "irc" // IR Cut (boolean)
-
 
 
 #define IF_KEY(k,v) (string(k) == v)
@@ -54,6 +56,12 @@ class SenMLValueInfo {
         exp = 220;
         res = 0x1C;
         irc = false;
+    };
+    
+    void clone(SenMLValueInfo *si){
+      this->exp = si->exp;  
+      this->res = si->res;  
+      this->irc = si->irc;  
     };
 };
 
@@ -98,7 +106,7 @@ class SenMLRecord {
 
         void clone(SenMLRecord * smin) {
             memcpy(_meta,smin->_meta,sizeof(*_meta));
-            memcpy(&_vi,&smin->_vi,sizeof(_vi));
+            this->_vi.clone(&(smin->_vi));
             this->_b  = smin->_b;
             this->_n  = smin->_n;
             this->_v  = smin->_v;
@@ -124,7 +132,6 @@ class SenMLRecord {
         void setValueInfo(SenMLValueInfo &vi) {
                     memcpy(&_vi,&vi,sizeof(_vi));
         };
-
 };
 
 
@@ -151,7 +158,31 @@ private:
     // a single VI class specific to our requirements
     // propose storing a vi record as a pointer, and subclassing the SenMLValueInfo class
     
- 
+private:
+    uint32_t readMap(){
+        uint32_t msize;
+        if (!cmp_read_map(&cmp,&msize))
+            return 0;
+        
+        return msize;
+    };
+
+    bool readString(string &s,uint32_t sz) {
+        uint32_t string_size;
+        char  _str[SML_MAX_STR];
+        if (!cmp_read_str_size(&cmp, &string_size))
+                return false;
+        if (string_size > sz)
+            return false;
+        if (!_stream->read((uint8_t*)_str, string_size))
+            return false;
+        
+        _str[string_size] = '\0';
+        s = string(_str);
+        return true;
+    };
+    
+
 public:
     void setMaxBufAllowed(unsigned int max);
     SenMLStream(StreamWrapper *stream);
@@ -179,7 +210,6 @@ public:
         return true;
     };
 
-    void flush();
     bool loop();
     
     bool writeSenML(SenMLRecord *sR,uint8_t numRecs = 1){
@@ -214,6 +244,24 @@ public:
         return true;
     };
 
+    bool appendMap(const string key,uint8_t val){
+        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+            return false;
+
+        if (!cmp_write_uint(&cmp, val))
+            return false;
+        return true;
+    };
+
+    bool appendMap(const string key,uint16_t val){
+        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+            return false;
+
+        if (!cmp_write_uint(&cmp, val))
+            return false;
+        return true;
+    };
+
     bool appendMap(const string key,float val){
         if (!cmp_write_str(&cmp, key.c_str(),key.length()))
             return false;
@@ -232,18 +280,20 @@ public:
         return true;
     };
 
-    bool appendBinary(const uint8_t * p, size_t s,bool end = false){
+    bool appendBinary(const uint8_t * p, size_t s){
         if (!cmp.write(&cmp, p, s))
             return false;
-        if (end)
-            this->flush();
     
         return true;
     };
 
+    void flush() {
+        if (_sending)
+            _stream->endPacket();
+        _sending = false;
+    };
     
-    
-    void print(){
+    void print() {
       printf("\n\nPrinting:\n");
       for(int i=0;i< numRecords;i++){
         SenMLRecord *r = record(i);

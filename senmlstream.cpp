@@ -4,6 +4,7 @@
 #include <math.h>
 
 
+
 bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
 
     if (((StreamWrapper*) ctx->buf)->available(limit)) {
@@ -27,61 +28,11 @@ void SenMLStream::begin(int baud){
       _stream->begin(baud);
 }
 
-void SenMLStream::flush(){
-    if (_sending)
-        _stream->endPacket();
-    _sending = false;
-};
 
 void SenMLStream::setMaxBufAllowed(unsigned int max) {
     //max_buf_allowed = max;
 }
 
-
-bool SenMLStream::parseHeader() {
-    uint32_t string_size,msize;
-    char key[SML_KEY_SIZE+1],val[SML_VAL_SIZE+1];
-
-    sH.reset();
-    
-    if (cmp_read_map(&cmp,&msize)){
-        for(uint32_t j=0; j<msize;j++){
-            #ifdef SMLDEBUG
-            printf("msize =>%d\n",msize);
-            #endif
-            if (msize >2)
-                continue; //wtf?
-            if (!cmp_read_str_size(&cmp, &string_size))
-                return false;
-            if (string_size > SML_KEY_SIZE)
-                return false;
-            if (!_stream->read((uint8_t*)key, string_size))
-                return false;
-            key[string_size] = '\0';
-            string k(key);
-
-            #ifdef SMLDEBUG
-            printf("Got key %s\n",key);
-            #endif
-            
-            if (k == SML_BASENAME){
-                if (!cmp_read_str_size(&cmp, &string_size))
-                    return false;
-                if (string_size > SML_VAL_SIZE)
-                    return false;
-                if (!_stream->read((uint8_t*)val, string_size))
-                    return false;
-            #ifdef SMLDEBUG
-                printf("Setting BN %s\n",val);
-            #endif
-                val[string_size] = '\0';
-                sH.setBN(string(val));
-            }
-        }
-    }
-
-    return msize >0;
-}
 
 
 bool SenMLStream::parseVI(SenMLValueInfo &vi,uint8_t msize) {
@@ -129,84 +80,96 @@ bool SenMLStream::parseVI(SenMLValueInfo &vi,uint8_t msize) {
     return true;    
 }
 
+bool SenMLStream::parseHeader() {
+    uint32_t msize=0;
+    string k,v;
+
+    sH.reset();
+    
+    for(uint32_t j=0; j < readMap();j++){
+        msize++;
+        if (!readString(k,SML_KEY_SIZE))
+            return false;
+        
+        if (k == SML_BASENAME) {
+            if (!readString(v,SML_VAL_SIZE))
+                return false;
+            sH.setBN(v);
+        }
+    }
+
+    return msize >0;
+}
+
 
 bool SenMLStream::parseRecord() {
-    uint32_t msize,string_size;
+    uint32_t string_size;
     cmp_object_t obj;
-    char key[SML_KEY_SIZE+1],val[SML_VAL_SIZE+1];
-    
+    char val[SML_VAL_SIZE+1];
+    string k;
     SenMLRecord * sR = createRecord();
 
     if (!sR)
         return false;
 
-    if (cmp_read_map(&cmp,&msize)){
-        for(uint32_t j=0; j<msize;j++){
-            if (!cmp_read_str_size(&cmp, &string_size))
-                return false;
-            if (string_size > SML_KEY_SIZE)
-                return false;
-            if (!_stream->read((uint8_t*)key, string_size))
-                return false;
-            key[string_size] = '\0';
-            string k(key);
-            #ifdef SMLDEBUG
-            printf("parse record - got key %s\n",key);
+    for(uint32_t j=0; j< readMap();j++){
+
+        if (!readString(k,SML_KEY_SIZE))
+            return false;
+
+        if (cmp_read_object(&cmp, &obj)) {
+           #ifdef SMLDEBUG
+            printf("Object found %x %d\n",obj.type,obj.as.str_size);
             #endif
 
-            if (cmp_read_object(&cmp, &obj)) {
-               #ifdef SMLDEBUG
-                printf("Object found %x %d\n",obj.type,obj.as.str_size);
-                #endif
-                switch(obj.type) {
-                    case CMP_TYPE_POSITIVE_FIXNUM:
-                        #ifdef SMLDEBUG
-                        printf("Got FIXNUM: %d\n",obj.as.u8);
-                        #endif 
-                        break;
-                    case CMP_TYPE_FIXMAP:
-                            if ( k == SML_INFO) {
-                                printf("Parse VI? %s\n",string(key).c_str());
-                                parseVI(sR->getValueInfo(),obj.as.map_size);
-                            }
-                        break;
-                    case CMP_TYPE_FIXSTR:
-                        if (_stream->read((uint8_t*)val, obj.as.str_size)) {
-                            val[obj.as.str_size] = '\0';
-                            #ifdef SMLDEBUG
-                            printf("Got FIXSTR %s\n",val);
-                            #endif
-        
-                            if (k == SML_NAME ){
-                                sR->setName(string(val));
-                            } else
-                            if (k == SML_UNIT ){
-                                sR->setUnit(string(val));
-                            }
+            switch(obj.type) {
+                case CMP_TYPE_POSITIVE_FIXNUM:
+                    #ifdef SMLDEBUG
+                    printf("Got FIXNUM: %d\n",obj.as.u8);
+                    #endif 
+                    break;
+                case CMP_TYPE_FIXMAP:
+                        if ( k == SML_INFO) {
+                            printf("Parse VI? %s\n",k.c_str());
+                            parseVI(sR->getValueInfo(),obj.as.map_size);
                         }
-                        break;
-                    case CMP_TYPE_FLOAT:
+                    break;
+                case CMP_TYPE_FIXSTR:
+                    if (_stream->read((uint8_t*)val, obj.as.str_size)) {
+                        val[obj.as.str_size] = '\0';
                         #ifdef SMLDEBUG
-                        printf("%f\n",obj.as.flt);
+                        printf("Got FIXSTR %s\n",val);
                         #endif
-                        if (k == SML_VALUE ) {
-                            sR->setValue(obj.as.flt);
+    
+                        if (k == SML_NAME ){
+                            sR->setName(string(val));
                         } else
-                        if (k == SML_MIN ) {
-                            sR->setMin(obj.as.flt);
-                        } else
-                        if (k == SML_MAX ) {
-                            sR->setMin(obj.as.flt);
+                        if (k == SML_UNIT ){
+                            sR->setUnit(string(val));
                         }
-                       break;
-                    default:
-                      //  printf("Unsupported %x\n",obj.type);
-                        return false;
-                        break;
-                }
-            } else {
-                ;//printf("CMP Error: %d\n",cmp.error);
+                    }
+                    break;
+                case CMP_TYPE_FLOAT:
+                    #ifdef SMLDEBUG
+                    printf("%f\n",obj.as.flt);
+                    #endif
+                    if (k == SML_VALUE ) {
+                        sR->setValue(obj.as.flt);
+                    } else
+                    if (k == SML_MIN ) {
+                        sR->setMin(obj.as.flt);
+                    } else
+                    if (k == SML_MAX ) {
+                        sR->setMin(obj.as.flt);
+                    }
+                   break;
+                default:
+                  //  printf("Unsupported %x\n",obj.type);
+                    return false;
+                    break;
             }
+        } else {
+            ;//printf("CMP Error: %d\n",cmp.error);
         }
     }
     return true;    

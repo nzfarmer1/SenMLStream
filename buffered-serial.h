@@ -85,26 +85,28 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
         return c <= available();
     }
     
-    size_t write(uint8_t val) {
+    size_t write(const uint8_t val) {
         //if (!ready())
           // return 0;
           #ifdef SMLDEBUG
-          printf("==>%x\n",val);
+        //  printf("==>%x\n",val);
           #endif
         if (isControl(val))
             LinuxSerial::write(DLE);
         return LinuxSerial::write(val);
     };
     
-    int write(const uint8_t * data, int len) {
+    int write(const uint8_t * data, size_t len) {
         uint8_t * _data = (uint8_t*)data;
-        int  written = len;
+        size_t  written = len;
         len=0;
         while(written){
            len++;
-           written -= this->write(*_data++);
+           uint8_t c = *(_data++);
+           while(!this->write(c)){;};
+           written--; 
             }
-        return len;
+        return (int)len;
     }
         
     

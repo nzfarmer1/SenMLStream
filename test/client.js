@@ -80,7 +80,13 @@
 	buffer = Buffer.concat([buffer,data]);
       }); 	
       dc.on("flush", ()=>{
-	console.log(mp.decode(buffer));
+	var sm =  mp.decode(buffer);
+	console.log(sm);
+	if (sm[1].vd){
+	
+		//console.log(sm[1].vd.toString());
+		fs.writeFile("vd.jpg",sm[1].vd,(e)=>{console.log(e)});
+		}
 	buffer =Buffer(0);
       });
 
