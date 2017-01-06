@@ -3,29 +3,32 @@
 #include <stdio.h>
 #include <math.h>
 
+#define KM(a) const string SenMLStream::a = SenMLStream::khash(a ## _IDX)
 
-const string SenMLStream::SML_BASENAME = SenMLStream::khash(SML_BASENAME_IDX);
-const string SenMLStream::SML_BASETIME = SenMLStream::khash(SML_BASETIME_IDX);
-const string SenMLStream::SML_BASEUNIT = SenMLStream::khash(SML_BASEUNIT_IDX);
-const string SenMLStream::SML_BASEVALUE = SenMLStream::khash(SML_BASEVALUE_IDX);
-const string SenMLStream::SML_BASESUM = SenMLStream::khash(SML_BASESUM_IDX);
-const string SenMLStream::SML_VERSION = SenMLStream::khash(SML_VERSION_IDX);
-const string SenMLStream::SML_NAME = SenMLStream::khash(SML_NAME_IDX);
-const string SenMLStream::SML_UNIT = SenMLStream::khash(SML_UNIT_IDX);
-const string SenMLStream::SML_VALUE = SenMLStream::khash(SML_VALUE_IDX);
-const string SenMLStream::SML_STR_VALUE = SenMLStream::khash(SML_STR_VALUE_IDX);
-const string SenMLStream::SML_BOOL_VALUE = SenMLStream::khash(SML_BOOL_VALUE_IDX);
-const string SenMLStream::SML_DATA_VALUE = SenMLStream::khash(SML_DATA_VALUE_IDX);
-const string SenMLStream::SML_POSITION = SenMLStream::khash(SML_POSITION_IDX);
-const string SenMLStream::SML_UPDATE_TIME = SenMLStream::khash(SML_UPDATE_TIME_IDX);
-const string SenMLStream::SML_TIME = SenMLStream::khash(SML_TIME_IDX);
-const string SenMLStream::SML_LINK = SenMLStream::khash(SML_LINK_IDX);
-const string SenMLStream::SML_SUM_VALUE = SenMLStream::khash(SML_SUM_VALUE_IDX);
+KM(SML_BASENAME);
+KM(SML_BASETIME);
+KM(SML_BASEUNIT);
+KM(SML_BASEVALUE);
+KM(SML_BASESUM);
+KM(SML_VERSION);
+KM(SML_NAME);
+KM(SML_UNIT);
+KM(SML_VALUE);
+KM(SML_STR_VALUE);
+KM(SML_BOOL_VALUE);
+KM(SML_DATA_VALUE);
+KM(SML_POSITION);
+KM(SML_UPDATE_TIME);
+KM(SML_TIME);
+KM(SML_LINK);
+KM(SML_SUM_VALUE);
 
-const string SenMLStreamAgSense::SML_VI_CAM = SenMLStreamAgSense::khash(SML_VI_CAM_IDX);
-const string SenMLStreamAgSense::SML_VI_EXP = SenMLStreamAgSense::khash(SML_VI_EXP_IDX); // "exp"; // exposure int
-const string SenMLStreamAgSense::SML_VI_RES = SenMLStreamAgSense::khash(SML_VI_RES_IDX); //"res" // resolution hex
-const string SenMLStreamAgSense::SML_VI_IRC = SenMLStreamAgSense::khash(SML_VI_IRC_IDX); // "irc" // IR Cut (boolean)
+#define AKM(a) const string SenMLStreamAgSense::a = SenMLStreamAgSense::khash(a ## _IDX)
+
+AKM(SML_VI_CAM);
+AKM(SML_VI_EXP);
+AKM(SML_VI_RES);
+AKM(SML_VI_IRC);
 
 
 bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
