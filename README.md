@@ -6,7 +6,11 @@ SenMLParser being developed for Arduino. Currently working with the Linux Serial
 
 https://github.com/nzfarmer1/arduino-serial
 
-(assumes this is located at same level in in folder heirarchy)
+Requires:
+
+https://github.com/nzfarmer1/HashMap
+
+(assumes these are located at same level in folder heirarchy)
 
 Uses msgpack encoding rather than JSON, and accepts SenML requests in SenML over serial rather than CoAP.
 

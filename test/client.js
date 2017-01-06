@@ -72,6 +72,7 @@
         console.log("connected");
 	setInterval(()=>{
 	//console.log("sending");
+	console.log(msg);
 	c.write(msg);
 	},5000);
       });
@@ -80,6 +81,8 @@
 	buffer = Buffer.concat([buffer,data]);
       }); 	
       dc.on("flush", ()=>{
+	console.log("Flushing");
+	console.log(buffer);
 	var sm =  mp.decode(buffer);
 	console.log(sm);
 	if (sm[1].vd){

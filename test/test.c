@@ -6,53 +6,42 @@
 
 BufferedEscapedLinuxSerialWrapper b;
 
-const char * filename = "/Users/andrew/Pictures/family.jpg";
-char *st = "foobar test hello world 5678901\0";
 
 uint8_t buff[32];
     
 int main(int argc, char **argv) {
-    SenMLHeader sH;
-    SenMLRecord r(&sH);
-    SenMLStream s(&b);
+    SenMLStreamAgSense s(&b);
     s.begin(9600);
-    int fp = open(filename,O_RDONLY);
-    if (fp <=0)
-        exit(0);
-    uint32_t fs =0,fc;
-    while(true){
-        fc = read(fp,buff,32);
-        fs+=fc;
-        if (fc < 32)
-            break;
-    }
-//    while((fs += read(fp,buff,32)) >0){;}
-    printf("len => %d\n",fs);
+    string key,val;
+    float fval =0;
+    bool bval = false;
+    
     while(1) {
         if (s.loop()){ // Must have record
-            lseek(fp,0,SEEK_SET);
             s.print();
-            r.clone(s.record(0));
-            s.reset();
-            s.addRecord(&r);
-            s.print();	
-            s.writeSenML(&r,1); // default 1 record
-            s.appendRecord(2); // 3 maps
-            s.appendMap(SML_NAME,"cam");
-            s.appendMap(SML_DATA_VALUE,(uint8_t*)buff,fs);
-            while(true){
-                fc = read(fp,buff,32);
-                if (fc>0)
-                    s.appendBinary(buff,fc);
-                if (fc < 32)
-                    break;
-            }
- 
+            printf("done print\n");
+            s.writeSenML(2); //  header + 1 extra record
+            
+            s.get(SML_BASENAME,val);
+            s.appendRecord(1); // 1 maps
+            s.appendMap(SML_BASENAME,val);
+
+            s.appendRecord(3); // 3 maps
+
+            s.get(SML_NAME,val,1);
+            s.appendMap(SML_NAME,val);
+            
+            s.get(SML_VALUE,fval,1);
+            s.appendMap(SML_VALUE,fval);
+
+            s.get(SML_BOOL_VALUE,bval,1);
+            s.appendMap(SML_BOOL_VALUE,bval);
+
             s.flush();
-            s.print();
-            exit(0);
+
+            s.reset();
+            printf("done reset\n\n\n\n");
         }
     }
-
     return 0;
 }

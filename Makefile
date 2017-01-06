@@ -23,7 +23,7 @@ ifeq "$(OS)" "macosx"
 EXE_SUFFIX=
 
 CFLAGS+= $(ARCHS) -DMACOSX #  -DSERIALPORTDEBUG
-CFLAGS += -mmacosx-version-min=10.6 -DSMLDEBUG
+CFLAGS += -g -mmacosx-version-min=10.6 -DSMLDEBUG
 LDFLAGS = -I../arduino-serial -L../arduino-serial
 CFLAGS_MONGOOSE=  -I./mongoose -pthread -g 
 CC=g++

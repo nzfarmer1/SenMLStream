@@ -89,7 +89,7 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
         //if (!ready())
           // return 0;
           #ifdef SMLDEBUG
-        //  printf("==>%x\n",val);
+          //printf("==>%x\n",val);
           #endif
         if (isControl(val))
             LinuxSerial::write(DLE);

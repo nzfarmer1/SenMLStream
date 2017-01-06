@@ -8,6 +8,8 @@
 using namespace std;
 #include "buffered-serial.h"
 #include "sys/types.h"
+#include <math.h>
+#include "../HashMap/src/HashMap.h"
 #include "cmp.h"
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
@@ -16,133 +18,86 @@ using namespace std;
 
 #include <WSTring.h>
 #define string String
+#include <math.h>
 #include <xarq.h>
 #include <cmp.h>
 #define StreamWrapper BufferedEscapedXStreamWrapper
 
 #endif
 
+/*
+    +---------------+-------+---------+
+    |          Name | label | Type    |
+    +---------------+-------+---------+
+    |     Base Name | bn    | String  |
+    |     Base Time | bt    | Number  |
+    |     Base Unit | bu    | String  |
+    |    Base Value | bv    | Number  |
+    |      Base Sum | bs    | Number  |
+    |       Version | bver  | Number  |
+    |          Name | n     | String  |
+    |          Unit | u     | String  |
+    |         Value | v     | Number  |
+    |  String Value | vs    | String  |
+    | Boolean Value | vb    | Boolean |
+    |    Data Value | vd    | String  |
+    |     Value Sum | s     | Number  |
+    |          Time | t     | Number  |
+    |   Update Time | ut    | Number  |
+    |          Link | l     | String  |
+    +---------------+-------+---------+
+*/
+
 #define MAX_SENML_RECS 4
-#define SML_KEY_SIZE 3
+#define SML_KEY_SIZE 4
 #define SML_VAL_SIZE 254
 #define SML_MAX_STR 254
 
-#define SML_NAME "n"
-#define SML_VALUE "v"
-#define SML_DATA_VALUE "vd"
-#define SML_BOOL_VALUE "vb"
-#define SML_UNIT "u"
 #define SML_BASENAME "bn"
 #define SML_BASETIME "bt"
+#define SML_BASEUNIT "bu"
+#define SML_BASEVALUE "bv"
+#define SML_BASESUM   "bs"
+#define SML_VERSION   "bver"
+#define SML_NAME "n"
+#define SML_UNIT "u"
+#define SML_VALUE "v"
+#define SML_STR_VALUE "vs"
+#define SML_BOOL_VALUE "vb"
+#define SML_DATA_VALUE "vd"
 #define SML_POSITION "pos"
-#define SML_MIN "min"
-#define SML_MAX    "max"
-#define SML_INFO "vi"
-#define SML_VI_EXP "exp" // exposure int
-#define SML_VI_RES "res" // resolution hex
-#define SML_VI_IRC "irc" // IR Cut (boolean)
+#define SML_UPD_TIME "ut"
+#define SML_TIME "t"
+#define SML_LINK "l"
+#define SML_SUM_VALUE "s"
 
 
-#define IF_KEY(k,v) (string(k) == v)
-
-
-class SenMLValueInfo {
-   public:
-    uint16_t exp;
-    uint8_t res;
-    bool  irc;
-    
-    void reset(){
-        exp = 220;
-        res = 0x1C;
-        irc = false;
-    };
-    
-    void clone(SenMLValueInfo *si){
-      this->exp = si->exp;  
-      this->res = si->res;  
-      this->irc = si->irc;  
-    };
-};
-
-class SenMLHeader {
-    protected:
-        string _bn;
-        float _pos[3],_v,_min,_max;
-        uint32_t bt;
-
-    public:
-        SenMLHeader(){};
-        SenMLHeader(string bn) { this->_bn = bn;};
-        void setBN(string bn) { this->_bn = bn;};
-        string getBN() { return this->_bn; };
-        void reset(){_bn="";  };
-};
-
-class SenMLRecord {
-    private:
-        string _b,_n,_u;
-        uint16_t _sz; // size of image
-        uint8_t *_vd;
-        float _min,_max,_v;
-        SenMLValueInfo _vi;
-    
-    protected:
-        SenMLHeader *_meta;
-
-    public:
-        SenMLRecord() : _meta() {};
-        SenMLRecord(SenMLHeader * meta) { _meta = meta; };
-        
-        void reset() {
-          _b = "";
-          _n = "";
-          _v = 0;
-          _u = "";
-          _vd = NULL;
-          _sz = 0;
-          _vi.reset();
-        };
-
-        void clone(SenMLRecord * smin) {
-            memcpy(_meta,smin->_meta,sizeof(*_meta));
-            this->_vi.clone(&(smin->_vi));
-            this->_b  = smin->_b;
-            this->_n  = smin->_n;
-            this->_v  = smin->_v;
-            this->_u  = smin->_u;
-            this->_vd = smin->_vd;
-            this->_sz = smin->_sz;
-        };
-        
-        void setMeta(SenMLHeader * meta){_meta = meta;};
-        SenMLHeader * getHeader() { return _meta; };
-        string getBN() { return (!_meta) ? "" : _meta->getBN(); };
-        void setName(string n){_n = n;};
-        void setUnit(string u){_u = u;};
-        void setValue(float v){_v = v;};
-        void setMin(float min){_min = min;};
-        void setMax(float max){_max = max;};
-        string getName() {return _n;};
-        string getUnit() {return _u;};
-        float getValue() {return _v;};
-        float getMin() {return _min;};
-        float getMax() {return _max;};
-        SenMLValueInfo & getValueInfo() {return _vi;};
-        void setValueInfo(SenMLValueInfo &vi) {
-                    memcpy(&_vi,&vi,sizeof(_vi));
-        };
-};
+#define IS_KEY(k,v) (string(k) == v)
 
 
 class SenMLStream {
 
+struct StrKey {
+    unsigned long operator()(const string& k) const
+    {
+        int l = 0;
+        size_t sz=0; 
+        int k1 = stoi(k,&sz);
+        string key = k.substr(sz+1,k.length()-(sz+1));
+        while(keymaps[l] != "_"){
+            if (keymaps[l++] == key)
+                break;
+        }
+        return  (unsigned long) (l*10 + k1)%TABLE_SIZE;
+    }
+};
+
 private:    
-    SenMLHeader sH;
-    SenMLRecord senml[MAX_SENML_RECS];
+    uint8_t numMaps;
     uint8_t numRecords;
     bool _sending;
     
+    HashMap<string, string, StrKey> hmap;
     cmp_ctx_t cmp;
     static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
     static size_t stream_writer(cmp_ctx_s *ctx, const void *data,
@@ -151,14 +106,11 @@ private:
     
     StreamWrapper *_stream;
     bool parseHeader();
-    bool parseRecord();
-    bool parseVI(SenMLValueInfo &vi,uint8_t msize);
+    bool parseRecord(int r);
+
+protected:
+    static const string keymaps[];
     
-    // Note current implementation is pretty crude with only a
-    // a single VI class specific to our requirements
-    // propose storing a vi record as a pointer, and subclassing the SenMLValueInfo class
-    
-private:
     uint32_t readMap(){
         uint32_t msize;
         if (!cmp_read_map(&cmp,&msize))
@@ -172,62 +124,136 @@ private:
         char  _str[SML_MAX_STR];
         if (!cmp_read_str_size(&cmp, &string_size))
                 return false;
+
+        if (!string_size){
+            s = string("");
+            return true;
+        }
+
         if (string_size > sz)
             return false;
         if (!_stream->read((uint8_t*)_str, string_size))
             return false;
         
         _str[string_size] = '\0';
+        printf("Read [%s]\n",_str);
         s = string(_str);
         return true;
     };
-    
 
-public:
-    void setMaxBufAllowed(unsigned int max);
-    SenMLStream(StreamWrapper *stream);
-
-    void begin(int baud);
-    void reset() { numRecords = 0;};
-    bool available() { return numRecords > 0; };
-    uint8_t length( ) {return numRecords; };
-    SenMLRecord * record(uint8_t i) {
-        return numRecords > 0 && i < numRecords ? &senml[i] : NULL;
-    };
-    
-    SenMLRecord * createRecord() {
-        if (numRecords >= MAX_SENML_RECS)
-            return NULL;
-        senml[numRecords].setMeta(&sH);
-        senml[numRecords].reset();
-        return &senml[numRecords++];
-    };
-    
-    bool addRecord(SenMLRecord * sR) {
-        if (numRecords >= MAX_SENML_RECS)
+    bool readNumber(float &f) {
+        cmp_object_t obj;
+        if (!cmp_read_object(&cmp, &obj))
             return false;
-        senml[numRecords++].clone(sR);
+        
+        
+        switch(obj.type) {
+            case CMP_TYPE_POSITIVE_FIXNUM:
+                #ifdef SMLDEBUG
+                printf("Got FIXNUM: %d\n",obj.as.u8);
+                #endif
+                f = (float) obj.as.u8; 
+                break;
+            case CMP_TYPE_FLOAT:
+                f = obj.as.flt;
+                break;
+            case CMP_TYPE_BOOLEAN:
+                f = (float)obj.as.boolean;
+                break;
+            default:
+                return false;
+        }
+        
         return true;
     };
 
+    bool parseField(string key,int r);
+
+    static string __key(const string k,int r=0){
+        return to_string((long long)r) + "-" + k;  
+    };
+    
+    void put(const string k, const string &v,int r=0) {
+      string _v = v;
+      string _k = __key(k,r);
+      hmap.put(_k,_v);
+      printf("PUT %s\n",_k.c_str());
+    };
+    
+    void put(const string k, const float &v,int r=0) {
+      put(k,to_string((long double)v),r);  
+    };
+
+    void put(const string k, const int &v,int r=0) {
+      put(k,to_string((long long)v),r);  
+    };
+
+    void put(const string k, const uint8_t &v,int r=0) {
+      put(k,to_string((long long)v),r);  
+    };
+
+    void put(const string k, const uint16_t &v,int r=0) {
+      put(k,to_string((long long)v),r);  
+    };
+
+    void put(const string k, const bool &v,int r=0) {
+      put(k,to_string((long long)v),r);  
+    };
+    
+public:
+    bool get(const string k, string &v,int r=0) {
+      string _k =__key(k,r);
+      return hmap.get(_k,v);  
+    };
+
+    bool get(const string k,  float &v,int r=0) {
+      string _key = __key(k,r);
+      string _val;
+      if (hmap.get(_key,_val)){
+          v = (float)stof(_val);
+          return true;
+      }
+      return false;
+    };
+
+    bool get(const string k,  uint8_t &v,int r=0) {
+      string _key = __key(k,r);
+      string _val;
+      if (hmap.get(_key,_val)){
+          v = (uint8_t)stof(_val);
+          return true;
+      }
+      return false;
+    };
+
+    bool get(const string k,  bool &v,int r=0) {
+      string _key = __key(k,r);
+      string _val;
+      if (hmap.get(_key,_val)){
+          v = (bool)stof(_val);
+          return true;
+      }
+      return false;
+    };
+
+    
+public:
+    SenMLStream(StreamWrapper *stream);
+
+    void begin(int baud);
+    void reset() { numRecords = 0; numMaps=0; hmap.clear();};
+    bool available() { return numRecords > 0; };
+    uint8_t length( ) {return numRecords; };
+    
     bool loop();
     
-    bool writeSenML(SenMLRecord *sR,uint8_t numRecs = 1){
-        SenMLHeader *sH = sR->getHeader();
-        if (!sR)
-            return false;
-
+    bool writeSenML(uint8_t numRecs = 1){
+        
         _stream->beginPacket();
 
-        if (!cmp_write_array(&cmp, numRecs+1))
+        if (!cmp_write_array(&cmp, numRecs))
             return false;
 
-        if (sH->getBN() != ""){
-            if (!appendRecord(1)) // Change to check for valid values first
-                return false;
-            if (!appendMap(string(SML_BASENAME),sH->getBN()))
-                return false;
-        }   
         _sending = true;
         return true; // Fix
     };
@@ -240,6 +266,14 @@ public:
         if (!cmp_write_str(&cmp, key.c_str(),key.length()))
             return false;
         if (!cmp_write_str(&cmp,val.c_str(),val.length()))
+            return false;
+        return true;
+    };
+
+        bool appendMap(const string key,bool val){
+        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+            return false;
+        if (!cmp_write_bool(&cmp,val))
             return false;
         return true;
     };
@@ -265,9 +299,14 @@ public:
     bool appendMap(const string key,float val){
         if (!cmp_write_str(&cmp, key.c_str(),key.length()))
             return false;
-
-        if (!cmp_write_float(&cmp, val))
-            return false;
+        
+        if (!isnan(val)){
+            if (!cmp_write_float(&cmp, val))
+                return false;
+        } else {
+            if (!cmp_write_str(&cmp,"",0))
+                return false;
+        }
         return true;
     };
 
@@ -293,20 +332,99 @@ public:
         _sending = false;
     };
     
+    static void iter(const string &key,const string &val){
+      printf("[%s] => [%s]\n",key.c_str(),val.c_str());
+    };
+    
     void print() {
-      printf("\n\nPrinting:\n");
-      for(int i=0;i< numRecords;i++){
-        SenMLRecord *r = record(i);
-        if (!r)
-            break;
-        printf("bn => %s\n",r->getBN().c_str());
-        printf("n => %s\n",r->getName().c_str());
-        printf("u => %s\n",r->getUnit().c_str());
-        printf("vi.exp => %d\n",r->getValueInfo().exp);
-        printf("vi.res => %d\n",r->getValueInfo().res);
-        printf("vi.irc => %d\n",r->getValueInfo().irc);
-      }
+      printf("\n\nPrinting %d:\n",numRecords);
+      hmap.iter(iter);
     };
 };
+
+
+/* ============================================================== 
+
+    AgSense
+    
+ ============================================================== */
+
+#define SML_INFO "vi"
+#define SML_VI_CAM "cam"
+#define SML_VI_EXP "exp" // exposure int
+#define SML_VI_RES "res" // resolution hex
+#define SML_VI_IRC "irc" // IR Cut (boolean)
+
+class SenMLStreamAgSense: public SenMLStream {
+
+   protected:
+    uint16_t exp;
+    uint8_t res;
+    bool  irc;
+    
+
+    bool parseVI(int r) {
+        string key;
+        float fval;
+        printf("Parse VI\n");
+    
+        uint32_t maps = readMap();
+        for(uint32_t j=0; j < maps;  j++){
+            if (!readString(key,SML_KEY_SIZE))
+                return false;
+    
+            if ( IS_KEY(key,SML_VI_EXP) ||
+                 IS_KEY(key,SML_VI_RES) ||
+                 IS_KEY(key,SML_VI_IRC)) {
+               
+                printf("Reading Key [%s]",key.c_str());
+                if (!readNumber(fval))
+                    return false;
+                if (IS_KEY(key,SML_VI_EXP))
+                    put(key,(int)fval,r);
+                    
+                if (IS_KEY(key,SML_VI_RES))
+                    put(key,(uint8_t)fval,r);
+    
+                if (IS_KEY(key,SML_VI_IRC))
+                    put(key,(bool)fval,r);
+            }
+        }
+        
+        return true;    
+    }
+
+    bool parseRecord(int r) {
+        string k;
+    
+        uint32_t maps = readMap();
+        for(uint32_t j=0; j< maps; j++) {
+    
+            if (!readString(k,SML_KEY_SIZE))
+                return false;
+    
+            if (k == SML_VI_CAM)
+                return parseVI(r);
+    
+            if (!parseField(k,r))
+                return false;
+        }
+        return true;    
+    }
+
+    public:
+        
+        SenMLStreamAgSense(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
+        
+        void reset(){
+            SenMLStream::reset();
+            //put(SML_VI_EXP,220);
+            //put(SML_VI_RES,0x1C);
+            //put(SML_VI_IRC,false);
+        };
+    
+};
+
+
 
 #endif
