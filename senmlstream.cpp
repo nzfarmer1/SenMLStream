@@ -4,24 +4,29 @@
 #include <math.h>
 
 
-const string SenMLStream::keymaps[]  = {SML_BASENAME,
-SML_BASETIME,
-SML_BASEUNIT,
-SML_BASEVALUE,
-SML_BASESUM  ,
-SML_VERSION  ,
-SML_NAME,
-SML_UNIT,
-SML_VALUE,
-SML_STR_VALUE,
-SML_BOOL_VALUE,
-SML_DATA_VALUE,
-SML_POSITION,
-SML_UPD_TIME,
-SML_TIME,
-SML_LINK,
-SML_SUM_VALUE,
-"_"};
+const string SenMLStream::SML_BASENAME = SenMLStream::khash(SML_BASENAME_IDX);
+const string SenMLStream::SML_BASETIME = SenMLStream::khash(SML_BASETIME_IDX);
+const string SenMLStream::SML_BASEUNIT = SenMLStream::khash(SML_BASEUNIT_IDX);
+const string SenMLStream::SML_BASEVALUE = SenMLStream::khash(SML_BASEVALUE_IDX);
+const string SenMLStream::SML_BASESUM = SenMLStream::khash(SML_BASESUM_IDX);
+const string SenMLStream::SML_VERSION = SenMLStream::khash(SML_VERSION_IDX);
+const string SenMLStream::SML_NAME = SenMLStream::khash(SML_NAME_IDX);
+const string SenMLStream::SML_UNIT = SenMLStream::khash(SML_UNIT_IDX);
+const string SenMLStream::SML_VALUE = SenMLStream::khash(SML_VALUE_IDX);
+const string SenMLStream::SML_STR_VALUE = SenMLStream::khash(SML_STR_VALUE_IDX);
+const string SenMLStream::SML_BOOL_VALUE = SenMLStream::khash(SML_BOOL_VALUE_IDX);
+const string SenMLStream::SML_DATA_VALUE = SenMLStream::khash(SML_DATA_VALUE_IDX);
+const string SenMLStream::SML_POSITION = SenMLStream::khash(SML_POSITION_IDX);
+const string SenMLStream::SML_UPDATE_TIME = SenMLStream::khash(SML_UPDATE_TIME_IDX);
+const string SenMLStream::SML_TIME = SenMLStream::khash(SML_TIME_IDX);
+const string SenMLStream::SML_LINK = SenMLStream::khash(SML_LINK_IDX);
+const string SenMLStream::SML_SUM_VALUE = SenMLStream::khash(SML_SUM_VALUE_IDX);
+
+const string SenMLStreamAgSense::SML_VI_CAM = SenMLStreamAgSense::khash(SML_VI_CAM_IDX);
+const string SenMLStreamAgSense::SML_VI_EXP = SenMLStreamAgSense::khash(SML_VI_EXP_IDX); // "exp"; // exposure int
+const string SenMLStreamAgSense::SML_VI_RES = SenMLStreamAgSense::khash(SML_VI_RES_IDX); //"res" // resolution hex
+const string SenMLStreamAgSense::SML_VI_IRC = SenMLStreamAgSense::khash(SML_VI_IRC_IDX); // "irc" // IR Cut (boolean)
+
 
 bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
 
@@ -36,7 +41,6 @@ size_t SenMLStream::stream_writer(cmp_ctx_t * ctx, const void * data, size_t cou
 }
 
 
- 
 SenMLStream::SenMLStream(StreamWrapper * stream) : _stream(stream)  {
     numRecords = 0;
     cmp_init(&cmp, (void*) _stream, SenMLStream::stream_reader, SenMLStream::stream_writer);
@@ -46,30 +50,6 @@ void SenMLStream::begin(int baud){
       _sending = false;
       _stream->begin(baud);
 }
-
-/*
-    +---------------+-------+---------+
-    |          Name | label | Type    |
-    +---------------+-------+---------+
-    |     Base Name | bn    | String  |
-    |     Base Time | bt    | Number  |
-    |     Base Unit | bu    | String  |
-    |    Base Value | bv    | Number  |
-    |      Base Sum | bs    | Number  |
-    |       Version | bver  | Number  |
-    |          Name | n     | String  |
-    |          Unit | u     | String  |
-    |         Value | v     | Number  |
-    |  String Value | vs    | String  |
-    | Boolean Value | vb    | Boolean |
-    |    Data Value | vd    | String  |
-    |     Value Sum | s     | Number  |
-    |          Time | t     | Number  |
-    |   Update Time | ut    | Number  |
-    |          Link | l     | String  |
-    +---------------+-------+---------+
-*/
-
 
 bool SenMLStream::parseField(string key,int r) {
     string sval;
@@ -87,7 +67,7 @@ bool SenMLStream::parseField(string key,int r) {
 
     if ( IS_KEY(key,SML_VALUE) ||
          IS_KEY(key,SML_SUM_VALUE) ||
-         IS_KEY(key,SML_UPD_TIME) ||
+         IS_KEY(key,SML_UPDATE_TIME) ||
          IS_KEY(key,SML_BOOL_VALUE) ||
          IS_KEY(key,SML_TIME) ) {
         if (!readNumber(fval))

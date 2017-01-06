@@ -53,293 +53,361 @@ using namespace std;
 #define SML_VAL_SIZE 254
 #define SML_MAX_STR 254
 
-#define SML_BASENAME "bn"
-#define SML_BASETIME "bt"
-#define SML_BASEUNIT "bu"
-#define SML_BASEVALUE "bv"
-#define SML_BASESUM   "bs"
-#define SML_VERSION   "bver"
-#define SML_NAME "n"
-#define SML_UNIT "u"
-#define SML_VALUE "v"
-#define SML_STR_VALUE "vs"
-#define SML_BOOL_VALUE "vb"
-#define SML_DATA_VALUE "vd"
-#define SML_POSITION "pos"
-#define SML_UPD_TIME "ut"
-#define SML_TIME "t"
-#define SML_LINK "l"
-#define SML_SUM_VALUE "s"
-
 
 #define IS_KEY(k,v) (string(k) == v)
 
-
 class SenMLStream {
 
-struct StrKey {
-    unsigned long operator()(const string& k) const
-    {
-        int l = 0;
-        size_t sz=0; 
-        int k1 = stoi(k,&sz);
-        string key = k.substr(sz+1,k.length()-(sz+1));
-        while(keymaps[l] != "_"){
-            if (keymaps[l++] == key)
-                break;
-        }
-        return  (unsigned long) (l*10 + k1)%TABLE_SIZE;
-    }
-};
-
-private:    
-    uint8_t numMaps;
-    uint8_t numRecords;
-    bool _sending;
+    public:
+        static const string SML_BASENAME;
+        static const string SML_BASETIME;
+        static const string SML_BASEUNIT;
+        static const string SML_BASEVALUE;
+        static const string SML_BASESUM;
+        static const string SML_VERSION;
+        static const string SML_NAME;
+        static const string SML_UNIT;
+        static const string SML_VALUE;
+        static const string SML_STR_VALUE;
+        static const string SML_BOOL_VALUE;
+        static const string SML_DATA_VALUE;
+        static const string SML_POSITION;
+        static const string SML_UPDATE_TIME;
+        static const string SML_TIME;
+        static const string SML_LINK;
+        static const string SML_SUM_VALUE;
     
-    HashMap<string, string, StrKey> hmap;
-    cmp_ctx_t cmp;
-    static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
-    static size_t stream_writer(cmp_ctx_s *ctx, const void *data,
-                                                size_t count);
-    StreamWrapper *Stream(){return (StreamWrapper *)cmp.buf;};
+    protected:
+        static enum KEYS  {
+            SML_BASENAME_IDX,
+            SML_BASETIME_IDX,
+            SML_BASEUNIT_IDX,
+            SML_BASEVALUE_IDX,
+            SML_BASESUM_IDX,
+            SML_VERSION_IDX,
+            SML_NAME_IDX,
+            SML_UNIT_IDX,
+            SML_VALUE_IDX,
+            SML_STR_VALUE_IDX,
+            SML_BOOL_VALUE_IDX,
+            SML_DATA_VALUE_IDX,
+            SML_POSITION_IDX,
+            SML_UPDATE_TIME_IDX,
+            SML_TIME_IDX,
+            SML_LINK_IDX,
+            SML_SUM_VALUE_IDX,
+            END} ikeys;
     
-    StreamWrapper *_stream;
-    bool parseHeader();
-    bool parseRecord(int r);
-
-protected:
-    static const string keymaps[];
+    private:
+        struct StrKey {
+            unsigned long operator()(const string& k) const
+            {
+                size_t sz=0,l=0; 
+                int k1 = stoi(k,&sz);
+                string key = k.substr(sz+1,k.length()-(sz+1));
     
-    uint32_t readMap(){
-        uint32_t msize;
-        if (!cmp_read_map(&cmp,&msize))
-            return 0;
+                while((KEYS)l < END ) {
+                    if (khash((KEYS)l) == key)
+                        break;
+                    l++;
+                }
+                return  (unsigned long) (l*10 + k1)%TABLE_SIZE;
+            }
+        };
+    
+        uint8_t numMaps;
+        uint8_t numRecords;
+        bool _sending;
         
-        return msize;
-    };
+        HashMap<string, string, StrKey> hmap;
+        cmp_ctx_t cmp;
+        static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
+        static size_t stream_writer(cmp_ctx_s *ctx, const void *data,
+                                                    size_t count);
+        StreamWrapper *Stream(){return (StreamWrapper *)cmp.buf;};
+        
+        StreamWrapper *_stream;
+        bool parseHeader();
+        bool parseRecord(int r);
 
-    bool readString(string &s,uint32_t sz) {
-        uint32_t string_size;
-        char  _str[SML_MAX_STR];
-        if (!cmp_read_str_size(&cmp, &string_size))
+    protected:
+    
+        static string khash(KEYS k){
+            switch(k) {
+                case SML_BASENAME_IDX:
+                    return string("bn");
+                case SML_BASETIME_IDX:
+                    return string("bt");
+                case SML_BASEUNIT_IDX:
+                    return string("bu");
+                case SML_BASEVALUE_IDX:
+                    return string("bv");
+                case SML_BASESUM_IDX:
+                    return string("bu");
+                case SML_VERSION_IDX:
+                    return string("bver");
+                case SML_NAME_IDX:
+                    return string("n");
+                case SML_UNIT_IDX:
+                    return string("u");
+                case SML_VALUE_IDX:
+                    return string("v");
+                case SML_STR_VALUE_IDX:
+                    return string("vs");
+                case SML_BOOL_VALUE_IDX:
+                    return string("vb");
+                case SML_DATA_VALUE_IDX:
+                    return string("vd");
+                case SML_POSITION_IDX:
+                    return string("pos");
+                case SML_UPDATE_TIME_IDX:
+                    return string("ut");
+                case SML_TIME_IDX:
+                    return string("t");
+                case SML_LINK_IDX:       
+                    return string("l");
+                case SML_SUM_VALUE_IDX:
+                    return string("s");
+                default:
+                    return string("unk");
+            }
+        
+          return string("unk");  
+        };
+    
+    
+        uint32_t readMap(){
+            uint32_t msize;
+            if (!cmp_read_map(&cmp,&msize))
+                return 0;
+            
+            return msize;
+        };
+    
+        bool readString(string &s,uint32_t sz) {
+            uint32_t string_size;
+            char  _str[SML_MAX_STR];
+            if (!cmp_read_str_size(&cmp, &string_size))
+                    return false;
+    
+            if (!string_size){
+                s = string("");
+                return true;
+            }
+    
+            if (string_size > sz)
                 return false;
-
-        if (!string_size){
-            s = string("");
+            if (!_stream->read((uint8_t*)_str, string_size))
+                return false;
+            
+            _str[string_size] = '\0';
+            #ifdef SMLDEBUG
+            printf("Read [%s]\n",_str);
+            #endif
+            s = string(_str);
             return true;
-        }
-
-        if (string_size > sz)
-            return false;
-        if (!_stream->read((uint8_t*)_str, string_size))
-            return false;
-        
-        _str[string_size] = '\0';
-        printf("Read [%s]\n",_str);
-        s = string(_str);
-        return true;
-    };
-
-    bool readNumber(float &f) {
-        cmp_object_t obj;
-        if (!cmp_read_object(&cmp, &obj))
-            return false;
-        
-        
-        switch(obj.type) {
-            case CMP_TYPE_POSITIVE_FIXNUM:
-                #ifdef SMLDEBUG
-                printf("Got FIXNUM: %d\n",obj.as.u8);
-                #endif
-                f = (float) obj.as.u8; 
-                break;
-            case CMP_TYPE_FLOAT:
-                f = obj.as.flt;
-                break;
-            case CMP_TYPE_BOOLEAN:
-                f = (float)obj.as.boolean;
-                break;
-            default:
+        };
+    
+        bool readNumber(float &f) {
+            cmp_object_t obj;
+            if (!cmp_read_object(&cmp, &obj))
                 return false;
-        }
+            
+            
+            switch(obj.type) {
+                case CMP_TYPE_POSITIVE_FIXNUM:
+                    #ifdef SMLDEBUG
+                    printf("Got FIXNUM: %d\n",obj.as.u8);
+                    #endif
+                    f = (float) obj.as.u8; 
+                    break;
+                case CMP_TYPE_FLOAT:
+                    f = obj.as.flt;
+                    break;
+                case CMP_TYPE_BOOLEAN:
+                    f = (float)obj.as.boolean;
+                    break;
+                default:
+                    return false;
+            }
+            
+            return true;
+        };
+    
+        bool parseField(string key,int r);
+    
+        static string __key(const string k,int r=0){
+            return to_string((long long)r) + "-" + k;  
+        };
         
-        return true;
-    };
-
-    bool parseField(string key,int r);
-
-    static string __key(const string k,int r=0){
-        return to_string((long long)r) + "-" + k;  
-    };
-    
-    void put(const string k, const string &v,int r=0) {
-      string _v = v;
-      string _k = __key(k,r);
-      hmap.put(_k,_v);
-      printf("PUT %s\n",_k.c_str());
-    };
-    
-    void put(const string k, const float &v,int r=0) {
-      put(k,to_string((long double)v),r);  
-    };
-
-    void put(const string k, const int &v,int r=0) {
-      put(k,to_string((long long)v),r);  
-    };
-
-    void put(const string k, const uint8_t &v,int r=0) {
-      put(k,to_string((long long)v),r);  
-    };
-
-    void put(const string k, const uint16_t &v,int r=0) {
-      put(k,to_string((long long)v),r);  
-    };
-
-    void put(const string k, const bool &v,int r=0) {
-      put(k,to_string((long long)v),r);  
-    };
-    
-public:
-    bool get(const string k, string &v,int r=0) {
-      string _k =__key(k,r);
-      return hmap.get(_k,v);  
-    };
-
-    bool get(const string k,  float &v,int r=0) {
-      string _key = __key(k,r);
-      string _val;
-      if (hmap.get(_key,_val)){
-          v = (float)stof(_val);
-          return true;
-      }
-      return false;
-    };
-
-    bool get(const string k,  uint8_t &v,int r=0) {
-      string _key = __key(k,r);
-      string _val;
-      if (hmap.get(_key,_val)){
-          v = (uint8_t)stof(_val);
-          return true;
-      }
-      return false;
-    };
-
-    bool get(const string k,  bool &v,int r=0) {
-      string _key = __key(k,r);
-      string _val;
-      if (hmap.get(_key,_val)){
-          v = (bool)stof(_val);
-          return true;
-      }
-      return false;
-    };
-
-    
-public:
-    SenMLStream(StreamWrapper *stream);
-
-    void begin(int baud);
-    void reset() { numRecords = 0; numMaps=0; hmap.clear();};
-    bool available() { return numRecords > 0; };
-    uint8_t length( ) {return numRecords; };
-    
-    bool loop();
-    
-    bool writeSenML(uint8_t numRecs = 1){
+        void put(const string k, const string &v,int r=0) {
+          string _v = v;
+          string _k = __key(k,r);
+          hmap.put(_k,_v);
+          #ifdef SMLDEBUG
+          printf("PUT %s\n",_k.c_str());
+          #endif
+        };
         
-        _stream->beginPacket();
-
-        if (!cmp_write_array(&cmp, numRecs))
-            return false;
-
-        _sending = true;
-        return true; // Fix
-    };
+        void put(const string k, const float &v,int r=0) {
+          put(k,to_string((long double)v),r);  
+        };
     
-    bool appendRecord(uint8_t nmaps){
-        return cmp_write_map(&cmp, nmaps);
-    };
-
-    bool appendMap(const string key,string val){
-        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-            return false;
-        if (!cmp_write_str(&cmp,val.c_str(),val.length()))
-            return false;
-        return true;
-    };
-
-        bool appendMap(const string key,bool val){
-        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-            return false;
-        if (!cmp_write_bool(&cmp,val))
-            return false;
-        return true;
-    };
-
-    bool appendMap(const string key,uint8_t val){
-        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-            return false;
-
-        if (!cmp_write_uint(&cmp, val))
-            return false;
-        return true;
-    };
-
-    bool appendMap(const string key,uint16_t val){
-        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-            return false;
-
-        if (!cmp_write_uint(&cmp, val))
-            return false;
-        return true;
-    };
-
-    bool appendMap(const string key,float val){
-        if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-            return false;
+        void put(const string k, const int &v,int r=0) {
+          put(k,to_string((long long)v),r);  
+        };
+    
+        void put(const string k, const uint8_t &v,int r=0) {
+          put(k,to_string((long long)v),r);  
+        };
+    
+        void put(const string k, const uint16_t &v,int r=0) {
+          put(k,to_string((long long)v),r);  
+        };
+    
+        void put(const string k, const bool &v,int r=0) {
+          put(k,to_string((long long)v),r);  
+        };
         
-        if (!isnan(val)){
-            if (!cmp_write_float(&cmp, val))
+    public:
+        bool get(const string k, string &v,int r=0) {
+          string _k =__key(k,r);
+          return hmap.get(_k,v);  
+        };
+    
+        bool get(const string k,  float &v,int r=0) {
+          string _key = __key(k,r);
+          string _val;
+          if (hmap.get(_key,_val)){
+              v = (float)stof(_val);
+              return true;
+          }
+          return false;
+        };
+    
+        bool get(const string k,  uint8_t &v,int r=0) {
+          string _key = __key(k,r);
+          string _val;
+          if (hmap.get(_key,_val)){
+              v = (uint8_t)stof(_val);
+              return true;
+          }
+          return false;
+        };
+    
+        bool get(const string k,  bool &v,int r=0) {
+          string _key = __key(k,r);
+          string _val;
+          if (hmap.get(_key,_val)){
+              v = (bool)stof(_val);
+              return true;
+          }
+          return false;
+        };
+    
+        
+        SenMLStream(StreamWrapper *stream);
+    
+        void begin(int baud);
+        void reset() { numRecords = 0; numMaps=0; hmap.clear();};
+        bool available() { return numRecords > 0; };
+        uint8_t length( ) {return numRecords; };
+        
+        bool loop();
+        
+        bool writeSenML(uint8_t numRecs = 1) {
+            
+            _stream->beginPacket();
+    
+            if (!cmp_write_array(&cmp, numRecs))
                 return false;
-        } else {
-            if (!cmp_write_str(&cmp,"",0))
+    
+            _sending = true;
+            return true; // Fix
+        };
+        
+        bool appendRecord(uint8_t nmaps) {
+            return cmp_write_map(&cmp, nmaps);
+        };
+    
+        bool appendMap(const string key,string val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
                 return false;
-        }
-        return true;
-    };
-
-    bool appendMap(const string key, const uint8_t * p, uint32_t s){
-        if (!cmp_write_str(&cmp, key.c_str(), key.length()))
-            return false;
-
-        if (!cmp_write_bin_marker(&cmp, s))
-            return false;
-        return true;
-    };
-
-    bool appendBinary(const uint8_t * p, size_t s){
-        if (!cmp.write(&cmp, p, s))
-            return false;
+            if (!cmp_write_str(&cmp,val.c_str(),val.length()))
+                return false;
+            return true;
+        };
     
-        return true;
-    };
-
-    void flush() {
-        if (_sending)
-            _stream->endPacket();
-        _sending = false;
-    };
+        bool appendMap(const string key,bool val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+            if (!cmp_write_bool(&cmp,val))
+                return false;
+            return true;
+        };
     
-    static void iter(const string &key,const string &val){
-      printf("[%s] => [%s]\n",key.c_str(),val.c_str());
-    };
+        bool appendMap(const string key,uint8_t val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
     
-    void print() {
-      printf("\n\nPrinting %d:\n",numRecords);
-      hmap.iter(iter);
-    };
+            if (!cmp_write_uint(&cmp, val))
+                return false;
+            return true;
+        };
+    
+        bool appendMap(const string key,uint16_t val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+    
+            if (!cmp_write_uint(&cmp, val))
+                return false;
+            return true;
+        };
+    
+        bool appendMap(const string key,float val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+            
+            if (!isnan(val)){
+                if (!cmp_write_float(&cmp, val))
+                    return false;
+            } else {
+                if (!cmp_write_str(&cmp,"",0))
+                    return false;
+            }
+            return true;
+        };
+    
+        bool appendMap(const string key, const uint8_t * p, uint32_t s){
+            if (!cmp_write_str(&cmp, key.c_str(), key.length()))
+                return false;
+    
+            if (!cmp_write_bin_marker(&cmp, s))
+                return false;
+            return true;
+        };
+    
+        bool appendBinary(const uint8_t * p, size_t s){
+            if (!cmp.write(&cmp, p, s))
+                return false;
+        
+            return true;
+        };
+    
+        void flush() {
+            if (_sending)
+                _stream->endPacket();
+            _sending = false;
+        };
+        
+        static void iter(const string &key,const string &val){
+          printf("[%s] => [%s]\n",key.c_str(),val.c_str());
+        };
+        
+        void print() {
+          printf("\n\nPrinting %d:\n",numRecords);
+          hmap.iter(iter);
+        };
 };
 
 
@@ -350,67 +418,96 @@ public:
  ============================================================== */
 
 #define SML_INFO "vi"
-#define SML_VI_CAM "cam"
-#define SML_VI_EXP "exp" // exposure int
-#define SML_VI_RES "res" // resolution hex
-#define SML_VI_IRC "irc" // IR Cut (boolean)
 
 class SenMLStreamAgSense: public SenMLStream {
 
-   protected:
-    uint16_t exp;
-    uint8_t res;
-    bool  irc;
-    
-
-    bool parseVI(int r) {
-        string key;
-        float fval;
-        printf("Parse VI\n");
-    
-        uint32_t maps = readMap();
-        for(uint32_t j=0; j < maps;  j++){
-            if (!readString(key,SML_KEY_SIZE))
-                return false;
-    
-            if ( IS_KEY(key,SML_VI_EXP) ||
-                 IS_KEY(key,SML_VI_RES) ||
-                 IS_KEY(key,SML_VI_IRC)) {
-               
-                printf("Reading Key [%s]",key.c_str());
-                if (!readNumber(fval))
-                    return false;
-                if (IS_KEY(key,SML_VI_EXP))
-                    put(key,(int)fval,r);
-                    
-                if (IS_KEY(key,SML_VI_RES))
-                    put(key,(uint8_t)fval,r);
-    
-                if (IS_KEY(key,SML_VI_IRC))
-                    put(key,(bool)fval,r);
-            }
-        }
+    protected:
+        static const string SML_VI_CAM; 
+        static const string SML_VI_EXP; // exposure int
+        static const string SML_VI_RES;  // resolution hex
+        static const string SML_VI_IRC;// IR Cut (boolean)
         
-        return true;    
-    }
-
-    bool parseRecord(int r) {
-        string k;
+        // Override KEYS to support custom types
+        static enum KEYS  {
+            SML_VI_CAM_IDX = SenMLStream::END,
+            SML_VI_EXP_IDX,
+            SML_VI_RES_IDX,
+            SML_VI_IRC_IDX,
+            END} ikeys;
     
-        uint32_t maps = readMap();
-        for(uint32_t j=0; j< maps; j++) {
-    
-            if (!readString(k,SML_KEY_SIZE))
-                return false;
-    
-            if (k == SML_VI_CAM)
-                return parseVI(r);
-    
-            if (!parseField(k,r))
-                return false;
+        // Override khash to support custom types
+        static string khash(KEYS k){
+            if (k < (SenMLStreamAgSense::KEYS)SenMLStream::END)
+                return SenMLStream::khash((SenMLStream::KEYS)k);
+            
+            switch(k) {
+                case SML_VI_CAM_IDX:
+                    return string("cam");
+                case SML_VI_RES_IDX:
+                    return string("res");
+                case SML_VI_IRC_IDX:
+                    return string("irc");
+                case SML_VI_EXP_IDX:
+                    return string("exp");
+                default:
+                    return string("unk");
+            }
+            return "unk";
         }
-        return true;    
-    }
+    
+        // Custom type
+        bool parseVI(int r) {
+            string key;
+            float fval;
+            #ifdef SMLDEBUG
+            printf("Parse VI\n");
+            #endif 
+            uint32_t maps = readMap();
+            for(uint32_t j=0; j < maps;  j++){
+                if (!readString(key,SML_KEY_SIZE))
+                    return false;
+        
+                if ( IS_KEY(key,SML_VI_EXP) ||
+                     IS_KEY(key,SML_VI_RES) ||
+                     IS_KEY(key,SML_VI_IRC)) {
+                   
+                    #ifdef SMLDEBUG
+                    printf("Reading Key [%s]",key.c_str());
+                    #endif
+                    if (!readNumber(fval))
+                        return false;
+                    if (IS_KEY(key,SML_VI_EXP))
+                        put(key,(int)fval,r);
+                        
+                    if (IS_KEY(key,SML_VI_RES))
+                        put(key,(uint8_t)fval,r);
+        
+                    if (IS_KEY(key,SML_VI_IRC))
+                        put(key,(bool)fval,r);
+                }
+            }
+            
+            return true;    
+        }
+    
+        // override parseRecord to handle custom types
+        bool parseRecord(int r) {
+            string k;
+        
+            uint32_t maps = readMap();
+            for(uint32_t j=0; j< maps; j++) {
+        
+                if (!readString(k,SML_KEY_SIZE))
+                    return false;
+        
+                if (k == SML_VI_CAM) // Add support for custom types
+                    return parseVI(r);
+        
+                if (!parseField(k,r)) // Else carry on
+                    return false;
+            }
+            return true;    
+        }
 
     public:
         

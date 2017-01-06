@@ -22,20 +22,20 @@ int main(int argc, char **argv) {
             printf("done print\n");
             s.writeSenML(2); //  header + 1 extra record
             
-            s.get(SML_BASENAME,val);
+            s.get(s.SML_BASENAME,val);
             s.appendRecord(1); // 1 maps
-            s.appendMap(SML_BASENAME,val);
+            s.appendMap(s.SML_BASENAME,val);
 
             s.appendRecord(3); // 3 maps
 
-            s.get(SML_NAME,val,1);
-            s.appendMap(SML_NAME,val);
+            s.get(s.SML_NAME,val,1);
+            s.appendMap(s.SML_NAME,val);
             
-            s.get(SML_VALUE,fval,1);
-            s.appendMap(SML_VALUE,fval);
+            s.get(s.SML_VALUE,fval,1);
+            s.appendMap(s.SML_VALUE,fval);
 
-            s.get(SML_BOOL_VALUE,bval,1);
-            s.appendMap(SML_BOOL_VALUE,bval);
+            s.get(s.SML_BOOL_VALUE,bval,1);
+            s.appendMap(s.SML_BOOL_VALUE,bval);
 
             s.flush();
 
