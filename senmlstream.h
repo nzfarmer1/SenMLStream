@@ -99,27 +99,19 @@ class SenMLStream {
             END} ikeys;
     
     private:
-        struct StrKey {
-            unsigned long operator()(const string& k) const
+
+        struct NumKey {
+            unsigned long operator()(const uint8_t& k) const
             {
-                size_t sz=0,l=0; 
-                int k1 = stoi(k,&sz);
-                string key = k.substr(sz+1,k.length()-(sz+1));
-    
-                while((KEYS)l < END ) {
-                    if (khash((KEYS)l) == key)
-                        break;
-                    l++;
-                }
-                return  (unsigned long) (l*10 + k1)%TABLE_SIZE;
+                return  (unsigned long) k%TABLE_SIZE;
             }
         };
-    
+
         uint8_t numMaps;
         uint8_t numRecords;
         bool _sending;
         
-        HashMap<string, string, StrKey> hmap;
+        HashMap<uint8_t, string, NumKey> hmap;
         cmp_ctx_t cmp;
         static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
         static size_t stream_writer(cmp_ctx_s *ctx, const void *data,
@@ -135,39 +127,39 @@ class SenMLStream {
         static string khash(KEYS k){
             switch(k) {
                 case SML_BASENAME_IDX:
-                    return string("bn");
+                    return SML_BASENAME;
                 case SML_BASETIME_IDX:
-                    return string("bt");
+                    return SML_BASETIME;
                 case SML_BASEUNIT_IDX:
-                    return string("bu");
+                    return SML_BASEUNIT;
                 case SML_BASEVALUE_IDX:
-                    return string("bv");
+                    return SML_BASEVALUE;
                 case SML_BASESUM_IDX:
-                    return string("bu");
+                    return SML_BASESUM;
                 case SML_VERSION_IDX:
-                    return string("bver");
+                    return SML_VERSION;
                 case SML_NAME_IDX:
-                    return string("n");
+                    return SML_NAME;
                 case SML_UNIT_IDX:
-                    return string("u");
+                    return SML_UNIT;
                 case SML_VALUE_IDX:
-                    return string("v");
+                    return SML_VALUE;
                 case SML_STR_VALUE_IDX:
-                    return string("vs");
+                    return SML_STR_VALUE;
                 case SML_BOOL_VALUE_IDX:
-                    return string("vb");
+                    return SML_BOOL_VALUE;
                 case SML_DATA_VALUE_IDX:
-                    return string("vd");
+                    return SML_DATA_VALUE;
                 case SML_POSITION_IDX:
-                    return string("pos");
+                    return SML_POSITION;
                 case SML_UPDATE_TIME_IDX:
-                    return string("ut");
+                    return SML_UPDATE_TIME;
                 case SML_TIME_IDX:
-                    return string("t");
+                    return SML_TIME;
                 case SML_LINK_IDX:       
-                    return string("l");
+                    return SML_LINK;
                 case SML_SUM_VALUE_IDX:
-                    return string("s");
+                    return SML_SUM_VALUE;
                 default:
                     return string("unk");
             }
@@ -213,7 +205,6 @@ class SenMLStream {
             if (!cmp_read_object(&cmp, &obj))
                 return false;
             
-            
             switch(obj.type) {
                 case CMP_TYPE_POSITIVE_FIXNUM:
                     #ifdef SMLDEBUG
@@ -235,17 +226,24 @@ class SenMLStream {
         };
     
         bool parseField(string key,int r);
-    
-        static string __key(const string k,int r=0){
-            return to_string((long long)r) + "-" + k;  
+
+        static uint8_t __key(const string k,int r=0){
+            uint8_t _k =0;
+                while((KEYS)_k < END ) {
+                    if (khash((KEYS)_k) == k)
+                        break;
+                    _k++;
+                }
+
+            return _k*10 + r;  
         };
-        
+    
         void put(const string k, const string &v,int r=0) {
           string _v = v;
-          string _k = __key(k,r);
+          uint8_t _k = __key(k,r);
           hmap.put(_k,_v);
           #ifdef SMLDEBUG
-          printf("PUT %s\n",_k.c_str());
+          printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
           #endif
         };
         
@@ -271,12 +269,12 @@ class SenMLStream {
         
     public:
         bool get(const string k, string &v,int r=0) {
-          string _k =__key(k,r);
+          uint8_t _k =__key(k,r);
           return hmap.get(_k,v);  
         };
     
         bool get(const string k,  float &v,int r=0) {
-          string _key = __key(k,r);
+          uint8_t _key = __key(k,r);
           string _val;
           if (hmap.get(_key,_val)){
               v = (float)stof(_val);
@@ -286,7 +284,7 @@ class SenMLStream {
         };
     
         bool get(const string k,  uint8_t &v,int r=0) {
-          string _key = __key(k,r);
+          uint8_t _key = __key(k,r);
           string _val;
           if (hmap.get(_key,_val)){
               v = (uint8_t)stof(_val);
@@ -296,7 +294,7 @@ class SenMLStream {
         };
     
         bool get(const string k,  bool &v,int r=0) {
-          string _key = __key(k,r);
+          uint8_t _key = __key(k,r);
           string _val;
           if (hmap.get(_key,_val)){
               v = (bool)stof(_val);
@@ -400,7 +398,12 @@ class SenMLStream {
             _sending = false;
         };
         
-        static void iter(const string &key,const string &val){
+
+        static void iter(const uint8_t &key,const string &val){
+          printf("[%d] [%s] => [%s]\n",key,khash((KEYS)(key/10)).c_str(),val.c_str());
+        };
+
+        static void _iter(const string &key,const string &val){
           printf("[%s] => [%s]\n",key.c_str(),val.c_str());
         };
         
@@ -417,11 +420,11 @@ class SenMLStream {
     
  ============================================================== */
 
-#define SML_INFO "vi"
 
 class SenMLStreamAgSense: public SenMLStream {
 
     protected:
+        static const string SML_VI; 
         static const string SML_VI_CAM; 
         static const string SML_VI_EXP; // exposure int
         static const string SML_VI_RES;  // resolution hex
@@ -429,7 +432,8 @@ class SenMLStreamAgSense: public SenMLStream {
         
         // Override KEYS to support custom types
         static enum KEYS  {
-            SML_VI_CAM_IDX = SenMLStream::END,
+            SML_VI_IDX = SenMLStream::END,
+            SML_VI_CAM_IDX,
             SML_VI_EXP_IDX,
             SML_VI_RES_IDX,
             SML_VI_IRC_IDX,
@@ -441,14 +445,16 @@ class SenMLStreamAgSense: public SenMLStream {
                 return SenMLStream::khash((SenMLStream::KEYS)k);
             
             switch(k) {
+                case SML_VI_IDX:
+                    return SML_VI;
                 case SML_VI_CAM_IDX:
-                    return string("cam");
+                    return SML_VI_CAM;
                 case SML_VI_RES_IDX:
-                    return string("res");
+                    return SML_VI_RES;
                 case SML_VI_IRC_IDX:
-                    return string("irc");
+                    return SML_VI_IRC;
                 case SML_VI_EXP_IDX:
-                    return string("exp");
+                    return SML_VI_EXP;
                 default:
                     return string("unk");
             }
@@ -500,7 +506,7 @@ class SenMLStreamAgSense: public SenMLStream {
                 if (!readString(k,SML_KEY_SIZE))
                     return false;
         
-                if (k == SML_VI_CAM) // Add support for custom types
+                if (k == SML_VI) // Add support for custom types
                     return parseVI(r);
         
                 if (!parseField(k,r)) // Else carry on

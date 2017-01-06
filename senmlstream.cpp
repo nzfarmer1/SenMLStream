@@ -3,32 +3,33 @@
 #include <stdio.h>
 #include <math.h>
 
-#define KM(a) const string SenMLStream::a = SenMLStream::khash(a ## _IDX)
+#define KM(a,b) const string SenMLStream::a = string(b)
 
-KM(SML_BASENAME);
-KM(SML_BASETIME);
-KM(SML_BASEUNIT);
-KM(SML_BASEVALUE);
-KM(SML_BASESUM);
-KM(SML_VERSION);
-KM(SML_NAME);
-KM(SML_UNIT);
-KM(SML_VALUE);
-KM(SML_STR_VALUE);
-KM(SML_BOOL_VALUE);
-KM(SML_DATA_VALUE);
-KM(SML_POSITION);
-KM(SML_UPDATE_TIME);
-KM(SML_TIME);
-KM(SML_LINK);
-KM(SML_SUM_VALUE);
+KM(SML_BASENAME,"bn");
+KM(SML_BASETIME,"bt");
+KM(SML_BASEUNIT,"bu");
+KM(SML_BASEVALUE,"bv");
+KM(SML_BASESUM,"bs");
+KM(SML_VERSION,"bver");
+KM(SML_NAME,"n");
+KM(SML_UNIT,"u");
+KM(SML_VALUE,"v");
+KM(SML_STR_VALUE,"vs");
+KM(SML_BOOL_VALUE,"vb");
+KM(SML_DATA_VALUE,"vd");
+KM(SML_POSITION,"pos");
+KM(SML_UPDATE_TIME,"ut");
+KM(SML_TIME,"t");
+KM(SML_LINK,"l");
+KM(SML_SUM_VALUE,"s");
 
-#define AKM(a) const string SenMLStreamAgSense::a = SenMLStreamAgSense::khash(a ## _IDX)
+#define AKM(a,b) const string SenMLStreamAgSense::a = string(b)
 
-AKM(SML_VI_CAM);
-AKM(SML_VI_EXP);
-AKM(SML_VI_RES);
-AKM(SML_VI_IRC);
+AKM(SML_VI,"vi");
+AKM(SML_VI_CAM,"cam");
+AKM(SML_VI_EXP,"exp");
+AKM(SML_VI_RES,"res");
+AKM(SML_VI_IRC,"irc");
 
 
 bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
