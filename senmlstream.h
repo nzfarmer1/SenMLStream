@@ -99,7 +99,6 @@ class SenMLStream {
             END} ikeys;
     
     private:
-
         struct NumKey {
             unsigned long operator()(const uint8_t& k) const
             {
@@ -231,52 +230,52 @@ class SenMLStream {
         };
     
         void put(const string k, const string &v,int r=0) {
-          string _v = v;
-          uint8_t _k = key(k,r);
-          hmap.put(_k,_v);
-          #ifdef SMLDEBUG
-          printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
-          #endif
+            string _v = v;
+            uint8_t _k = key(k,r);
+            hmap.put(_k,_v);
+            #ifdef SMLDEBUG
+            printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
+            #endif
         };
         
         void put(const string k, const float &v,int r=0) {
-        #ifdef _SIMULATOR
-          put(k,to_string((long double)v),r);
-        #else
-          put(k,v,r);
-        #endif
+            #ifdef _SIMULATOR
+            put(k,to_string((long double)v),r);
+            #else
+            put(k,v,r);
+            #endif
         };
     
         void put(const string k, const int &v,int r=0) {
-        #ifdef _SIMULATOR
-          put(k,to_string((long long)v),r);  
-        #else
-          put(k,v,r);
-        #endif
+            #ifdef _SIMULATOR
+            put(k,to_string((long long)v),r);  
+            #else
+            put(k,v,r);
+            #endif
         };
     
         void put(const string k, const uint8_t &v,int r=0) {
-        #ifdef _SIMULATOR
-          put(k,to_string((long long)v),r);  
-        #else
-          put(k,v,r);
-        #endif
+            #ifdef _SIMULATOR
+            put(k,to_string((long long)v),r);  
+            #else
+            put(k,v,r);
+            #endif
         };
     
         void put(const string k, const uint16_t &v,int r=0) {
-        #ifdef _SIMULATOR
-          put(k,to_string((long long)v),r);  
-        #else
-          put(k,v,r);
-        #endif
+            #ifdef _SIMULATOR
+            put(k,to_string((long long)v),r);  
+            #else
+            put(k,v,r);
+            #endif
         };
     
         void put(const string k, const bool &v,int r=0) {
-        #ifdef _SIMULATOR
-          put(k,to_string((long long)v),r);  
-        #else
-          put(k,v,r);
-        #endif
+            #ifdef _SIMULATOR
+            put(k,to_string((long long)v),r);  
+            #else
+            put(k,v,r);
+            #endif
         };
         
     public:
@@ -401,7 +400,7 @@ class SenMLStream {
             if (!cmp_write_bin_marker(&cmp, sz))
                 return false;
             
-            if (append && sz < (sizeof(uint8_t) << 8))
+            if (append && sz < (sizeof(uint8_t) << (sizeof(uint8_t)*8)))
                 return appendBinary(p,(uint8_t)sz);
             
             return true;
