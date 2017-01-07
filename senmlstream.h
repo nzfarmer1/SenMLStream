@@ -445,6 +445,13 @@ class SenMLStream {
 
 class SenMLStreamCore: public SenMLStream {
 
+    public:
+        SenMLStreamCore(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
+        
+        bool loop() {
+            return  SenMLStream::loop();
+        }
+
     protected:
         string khash(uint8_t k){
             return SenMLStream::_khash((SenMLStream::KEYS)k);
@@ -476,12 +483,6 @@ class SenMLStreamCore: public SenMLStream {
             return true;    
         }
 
-    public:
-        SenMLStreamCore(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
-        
-        bool loop() {
-            return  SenMLStream::loop();
-        }
     
 };
 
@@ -504,6 +505,16 @@ class SenMLStreamAgSense: public SenMLStream {
         static const string SML_VI_RES;  // resolution hex
         static const string SML_VI_IRC;// IR Cut (boolean)
         
+        SenMLStreamAgSense(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
+        
+        bool loop() {
+            return  SenMLStream::loop();
+        }
+
+        void reset(){
+            SenMLStream::reset();
+        };
+
     protected:
         // Override KEYS to support custom types
         static enum KEYS  {
@@ -612,16 +623,6 @@ class SenMLStreamAgSense: public SenMLStream {
             return true;    
         };
 
-    public:
-        SenMLStreamAgSense(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
-        
-        bool loop() {
-            return  SenMLStream::loop();
-        }
-
-        void reset(){
-            SenMLStream::reset();
-        };
     
 };
 
