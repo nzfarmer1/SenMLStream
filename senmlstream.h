@@ -626,4 +626,4 @@ class SenMLStreamAgSense: public SenMLStream {
 
 
 
-#endif
+#endif // SENMLSTREAM_H
