@@ -551,9 +551,9 @@ class SenMLStreamAgSense: public SenMLStream {
     
         // Custom type
         bool parseVI(int r) {
-            string key;
-            int res =0;
-            float fval = nanf("");
+            string  key;
+            int     res =0;
+            float   fval = 0;
             #ifdef SMLDEBUG
             printf("Parse VI\n");
             #endif 
@@ -570,7 +570,6 @@ class SenMLStreamAgSense: public SenMLStream {
                     printf("Reading Key [%s]\n",key.c_str());
                     #endif
                     res = readNumber(fval);
-                    printf("Got result %d\n",res);
                     if (res == -1)
                         return false;
                     
@@ -595,13 +594,14 @@ class SenMLStreamAgSense: public SenMLStream {
 
         bool parseRecord(int r) {
             string k;
-            printf("Parse Record");
             uint32_t maps = readMap();
             for(uint32_t j=0; j< maps; j++) {
         
                 if (!readString(k,SML_KEY_SIZE))
                     return false;
+                #ifdef SMLDEBUG
                 printf("GOT -> %s",k.c_str());
+                #endif
                 if (k == SML_VI) // Add support for custom types
                     return parseVI(r);
         
