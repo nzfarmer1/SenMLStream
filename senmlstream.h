@@ -14,10 +14,11 @@ using namespace std;
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
 #else // DUINO
-#define bool boolean
-
+//      #define bool boolean
+#define stof(a) a.toFloat()
 #include <WSTring.h>
 #define string String
+#include <HashMap.h>
 #include <math.h>
 #include <xarq.h>
 #include <cmp.h>
@@ -120,11 +121,13 @@ class SenMLStream {
         
         StreamWrapper *_stream;
         bool parseHeader();
-        bool parseRecord(int r);
 
     protected:
+        virtual bool parseRecord(int r) = 0;
+
+        virtual string khash(uint8_t k) = 0;
     
-        static string khash(KEYS k){
+        static string _khash(KEYS k){
             switch(k) {
                 case SML_BASENAME_IDX:
                     return SML_BASENAME;
@@ -204,12 +207,12 @@ class SenMLStream {
             cmp_object_t obj;
             if (!cmp_read_object(&cmp, &obj))
                 return false;
-            
+            #ifdef SMLDEBUG
+            printf("Read Number Got: %x\n",obj.type);
+            #endif
+                  
             switch(obj.type) {
                 case CMP_TYPE_POSITIVE_FIXNUM:
-                    #ifdef SMLDEBUG
-                    printf("Got FIXNUM: %d\n",obj.as.u8);
-                    #endif
                     f = (float) obj.as.u8; 
                     break;
                 case CMP_TYPE_FLOAT:
@@ -218,6 +221,13 @@ class SenMLStream {
                 case CMP_TYPE_BOOLEAN:
                     f = (float)obj.as.boolean;
                     break;
+                case CMP_TYPE_UINT8:
+                    f = (float)obj.as.u8;
+                    break;
+                case CMP_TYPE_NEGATIVE_FIXNUM:
+                    f = (float) obj.as.s8;
+                    break;
+
                 default:
                     return false;
             }
@@ -227,20 +237,11 @@ class SenMLStream {
     
         bool parseField(string key,int r);
 
-        static uint8_t __key(const string k,int r=0){
-            uint8_t _k =0;
-                while((KEYS)_k < END ) {
-                    if (khash((KEYS)_k) == k)
-                        break;
-                    _k++;
-                }
+        virtual  uint8_t key(const string k,int r=0) = 0;
 
-            return _k*10 + r;  
-        };
-    
         void put(const string k, const string &v,int r=0) {
           string _v = v;
-          uint8_t _k = __key(k,r);
+          uint8_t _k = key(k,r);
           hmap.put(_k,_v);
           #ifdef SMLDEBUG
           printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
@@ -248,33 +249,54 @@ class SenMLStream {
         };
         
         void put(const string k, const float &v,int r=0) {
-          put(k,to_string((long double)v),r);  
+        #ifdef _SIMULATOR
+          put(k,to_string((long double)v),r);
+        #else
+          put(k,v,r);
+        #endif
+        
         };
     
         void put(const string k, const int &v,int r=0) {
+        #ifdef _SIMULATOR
           put(k,to_string((long long)v),r);  
+        #else
+          put(k,v,r);
+        #endif
         };
     
         void put(const string k, const uint8_t &v,int r=0) {
+        #ifdef _SIMULATOR
           put(k,to_string((long long)v),r);  
+        #else
+          put(k,v,r);
+        #endif
         };
     
         void put(const string k, const uint16_t &v,int r=0) {
+        #ifdef _SIMULATOR
           put(k,to_string((long long)v),r);  
+        #else
+          put(k,v,r);
+        #endif
         };
     
         void put(const string k, const bool &v,int r=0) {
+        #ifdef _SIMULATOR
           put(k,to_string((long long)v),r);  
+        #else
+          put(k,v,r);
+        #endif
         };
         
     public:
         bool get(const string k, string &v,int r=0) {
-          uint8_t _k =__key(k,r);
+          uint8_t _k =key(k,r);
           return hmap.get(_k,v);  
         };
     
         bool get(const string k,  float &v,int r=0) {
-          uint8_t _key = __key(k,r);
+          uint8_t _key = key(k,r);
           string _val;
           if (hmap.get(_key,_val)){
               v = (float)stof(_val);
@@ -284,7 +306,7 @@ class SenMLStream {
         };
     
         bool get(const string k,  uint8_t &v,int r=0) {
-          uint8_t _key = __key(k,r);
+          uint8_t _key = key(k,r);
           string _val;
           if (hmap.get(_key,_val)){
               v = (uint8_t)stof(_val);
@@ -294,7 +316,7 @@ class SenMLStream {
         };
     
         bool get(const string k,  bool &v,int r=0) {
-          uint8_t _key = __key(k,r);
+          uint8_t _key = key(k,r);
           string _val;
           if (hmap.get(_key,_val)){
               v = (bool)stof(_val);
@@ -400,7 +422,7 @@ class SenMLStream {
         
 
         static void iter(const uint8_t &key,const string &val){
-          printf("[%d] [%s] => [%s]\n",key,khash((KEYS)(key/10)).c_str(),val.c_str());
+          printf("[%d] [%s] => [%s]\n",key,_khash((KEYS)(key/10)).c_str(),val.c_str());
         };
 
         static void _iter(const string &key,const string &val){
@@ -414,6 +436,58 @@ class SenMLStream {
 };
 
 
+
+/* ============================================================== 
+
+    Core
+    
+ ============================================================== */
+
+
+class SenMLStreamCore: public SenMLStream {
+
+    protected:
+        string khash(uint8_t k){
+            return SenMLStream::_khash((SenMLStream::KEYS)k);
+        }
+
+        uint8_t key(const string k,int r=0){
+            uint8_t _k =0;
+                while((KEYS)_k < END ) {
+                    if (khash((KEYS)_k) == k)
+                        break;
+                    _k++;
+                }
+
+            return _k*10 + r;  
+        };
+    
+        bool parseRecord(int r) {
+            string k;
+        
+            uint32_t maps = readMap();
+            for(uint32_t j=0; j< maps; j++) {
+        
+                if (!readString(k,SML_KEY_SIZE))
+                    return false;
+                
+                if (!parseField(k,r))
+                    return false;
+            }
+            return true;    
+        }
+
+    public:
+        SenMLStreamCore(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
+        
+        bool loop() {
+            return  SenMLStream::loop();
+        }
+    
+};
+
+
+
 /* ============================================================== 
 
     AgSense
@@ -421,15 +495,17 @@ class SenMLStream {
  ============================================================== */
 
 
+
 class SenMLStreamAgSense: public SenMLStream {
 
-    protected:
+    public:
         static const string SML_VI; 
         static const string SML_VI_CAM; 
         static const string SML_VI_EXP; // exposure int
         static const string SML_VI_RES;  // resolution hex
         static const string SML_VI_IRC;// IR Cut (boolean)
         
+    protected:
         // Override KEYS to support custom types
         static enum KEYS  {
             SML_VI_IDX = SenMLStream::END,
@@ -438,13 +514,27 @@ class SenMLStreamAgSense: public SenMLStream {
             SML_VI_RES_IDX,
             SML_VI_IRC_IDX,
             END} ikeys;
+
+    
+        uint8_t key(const string k,int r=0){
+            uint8_t _k =0;
+                while((KEYS)_k < END ) {
+                    if (khash((KEYS)_k) == k)
+                        break;
+                    _k++;
+                }
+
+            return _k*10 + r;  
+        };
+    
     
         // Override khash to support custom types
-        static string khash(KEYS k){
-            if (k < (SenMLStreamAgSense::KEYS)SenMLStream::END)
-                return SenMLStream::khash((SenMLStream::KEYS)k);
+        string khash(uint8_t k) {
+            KEYS _k = (KEYS)k;
+            if (_k < (SenMLStreamAgSense::KEYS)SenMLStream::END)
+                return SenMLStream::_khash((SenMLStream::KEYS)_k);
             
-            switch(k) {
+            switch(_k) {
                 case SML_VI_IDX:
                     return SML_VI;
                 case SML_VI_CAM_IDX:
@@ -459,7 +549,7 @@ class SenMLStreamAgSense: public SenMLStream {
                     return string("unk");
             }
             return "unk";
-        }
+        };
     
         // Custom type
         bool parseVI(int r) {
@@ -478,10 +568,11 @@ class SenMLStreamAgSense: public SenMLStream {
                      IS_KEY(key,SML_VI_IRC)) {
                    
                     #ifdef SMLDEBUG
-                    printf("Reading Key [%s]",key.c_str());
+                    printf("Reading Key [%s]\n",key.c_str());
                     #endif
                     if (!readNumber(fval))
                         return false;
+
                     if (IS_KEY(key,SML_VI_EXP))
                         put(key,(int)fval,r);
                         
@@ -494,18 +585,17 @@ class SenMLStreamAgSense: public SenMLStream {
             }
             
             return true;    
-        }
-    
-        // override parseRecord to handle custom types
+        };
+
         bool parseRecord(int r) {
             string k;
-        
+            printf("Parse Record");
             uint32_t maps = readMap();
             for(uint32_t j=0; j< maps; j++) {
         
                 if (!readString(k,SML_KEY_SIZE))
                     return false;
-        
+                printf("GOT -> %s",k.c_str());
                 if (k == SML_VI) // Add support for custom types
                     return parseVI(r);
         
@@ -513,17 +603,17 @@ class SenMLStreamAgSense: public SenMLStream {
                     return false;
             }
             return true;    
-        }
+        };
 
     public:
-        
         SenMLStreamAgSense(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
         
+        bool loop() {
+            return  SenMLStream::loop();
+        }
+
         void reset(){
             SenMLStream::reset();
-            //put(SML_VI_EXP,220);
-            //put(SML_VI_RES,0x1C);
-            //put(SML_VI_IRC,false);
         };
     
 };

@@ -36,6 +36,9 @@ int main(int argc, char **argv) {
 
             s.get(s.SML_BOOL_VALUE,bval,1);
             s.appendMap(s.SML_BOOL_VALUE,bval);
+            
+            s.get(s.SML_VI_IRC,bval,2);
+            printf("IRC => %d\n",bval);
 
             s.flush();
 

@@ -5,6 +5,7 @@
 
 #define KM(a,b) const string SenMLStream::a = string(b)
 
+
 KM(SML_BASENAME,"bn");
 KM(SML_BASETIME,"bt");
 KM(SML_BASEUNIT,"bu");
@@ -46,6 +47,7 @@ size_t SenMLStream::stream_writer(cmp_ctx_t * ctx, const void * data, size_t cou
 
 
 SenMLStream::SenMLStream(StreamWrapper * stream) : _stream(stream)  {
+    static_assert( (int)(END * 10) < (TABLE_SIZE-10),"Hash Table too small! Need to increase key ");
     numRecords = 0;
     cmp_init(&cmp, (void*) _stream, SenMLStream::stream_reader, SenMLStream::stream_writer);
 }
@@ -63,7 +65,6 @@ bool SenMLStream::parseField(string key,int r) {
          IS_KEY(key,SML_UNIT) ||
          IS_KEY(key,SML_LINK) ||
          IS_KEY(key,SML_STR_VALUE) ) {
-        printf("Reading Key [%s]",key.c_str());
         if (!readString(sval,SML_VAL_SIZE))
             return false;
         put(key,sval,r);
@@ -76,7 +77,6 @@ bool SenMLStream::parseField(string key,int r) {
          IS_KEY(key,SML_TIME) ) {
         if (!readNumber(fval))
             return false;
-        printf("Adding Number  [%f]\n",fval);
         put(key,fval,r);
     }
     
@@ -108,20 +108,6 @@ bool SenMLStream::parseHeader() {
 }
 
 
-bool SenMLStream::parseRecord(int r) {
-    string k;
-
-    uint32_t maps = readMap();
-    for(uint32_t j=0; j< maps; j++) {
-
-        if (!readString(k,SML_KEY_SIZE))
-            return false;
-        
-        if (!parseField(k,r))
-            return false;
-    }
-    return true;    
-}
 
 
 bool SenMLStream::loop() {
@@ -137,13 +123,13 @@ bool SenMLStream::loop() {
     // parse record
     for(uint32_t i=0;i<asize;i++){
         if (!i){
-            if (!parseHeader())
+            if (!this->parseHeader())
                 return false;
             #ifdef SMLDEBUG
             printf("parsed header\n");
             #endif
         } else {      
-            if (!parseRecord(i))
+            if (!this->parseRecord(i))
                 return false;
             #ifdef SMLDEBUG
             printf("parsed record %d\n",i);
