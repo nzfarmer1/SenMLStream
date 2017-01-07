@@ -48,7 +48,7 @@ size_t SenMLStream::stream_writer(cmp_ctx_t * ctx, const void * data, size_t cou
 
 SenMLStream::SenMLStream(StreamWrapper * stream) : _stream(stream)  {
     static_assert( (int)(END * 10) < (TABLE_SIZE-10),"Hash Table too small! Need to increase key ");
-    numRecords = 0;
+    _numRecords = 0;
     cmp_init(&cmp, (void*) _stream, SenMLStream::stream_reader, SenMLStream::stream_writer);
 }
 
@@ -57,9 +57,10 @@ void SenMLStream::begin(int baud){
       _stream->begin(baud);
 }
 
+// Parse and individual field from the core 
 bool SenMLStream::parseField(string key,int r) {
     string sval;
-    float fval = nanf("");
+    float fval = 0;
     int res =0;
 
     if ( IS_KEY(key,SML_NAME) ||
@@ -95,8 +96,7 @@ bool SenMLStream::parseField(string key,int r) {
 bool SenMLStream::parseHeader() {
     uint32_t msize=0;
     string k,v;
-
-    
+   
     uint32_t maps = readMap();
     for(uint32_t j=0; j < maps;  j++){
         msize++;
@@ -138,7 +138,7 @@ bool SenMLStream::loop() {
             #ifdef SMLDEBUG
             printf("parsed record %d\n",i);
             #endif
-            numRecords++;
+            _numRecords++;
         }
         #ifdef SMLDEBUG
         fflush(stdout); 

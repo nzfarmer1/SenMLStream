@@ -77,6 +77,160 @@ class SenMLStream {
         static const string SML_LINK;
         static const string SML_SUM_VALUE;
     
+        
+        SenMLStream(StreamWrapper *stream);
+        void begin(int baud);
+        void reset() { _numRecords = 0;  hmap.clear();};
+        bool available() { return _numRecords > 0; };
+        uint8_t length() { return _numRecords; };
+        bool loop();
+        
+        // Getters return values from hash in requested type
+        // Returns -1 if key absent; 0 if NULL; 1 if good
+        
+        int get(const string k, string &v,int r=0) {
+            uint8_t _k =key(k,r);
+            if (!hmap.get(_k,v))
+              return -1;
+            return (v == "null") ? 0 : 1;
+        };
+    
+        int get(const string k,  float &v,int r=0) {
+            uint8_t _key = key(k,r);
+            string _val;
+            if (!hmap.get(_key,_val))
+              return -1;
+            if (_val == "null")
+                return 0;
+            v = (float)stof(_val);
+            return (isnan(v)) ? 0 : 1;
+        };
+    
+        int get(const string k,  uint8_t &v,int r=0) {
+            uint8_t _key = key(k,r);
+            string _val;
+            if (!hmap.get(_key,_val))
+              return -1;
+            if (_val == "null")
+                return 0;
+            v = (uint8_t)stof(_val);
+            return (isnan(v)) ? 0 : 1;
+        };
+    
+        int get(const string k,  bool &v,int r=0) {
+            uint8_t _key = key(k,r);
+            string _val;
+            if (!hmap.get(_key,_val))
+              return -1;
+            if (_val == "null")
+                return 0;
+            v = (bool)stof(_val);
+            return (isnan(v)) ? 0 : 1;
+        };
+    
+        // Create new out going message
+        bool writeSenML(uint8_t numRecs = 1) {
+            
+            _stream->beginPacket();
+    
+            if (!cmp_write_array(&cmp, numRecs))
+                return false;
+    
+            _sending = true;
+            return true; 
+        };
+        
+        bool appendRecord(uint8_t nmaps) {
+            return cmp_write_map(&cmp, nmaps);
+        };
+    
+        bool appendMap(const string key,string val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+            if (!cmp_write_str(&cmp,val.c_str(),val.length()))
+                return false;
+            return true;
+        };
+    
+        bool appendMap(const string key,bool val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+            if (!cmp_write_bool(&cmp,val))
+                return false;
+            return true;
+        };
+    
+        bool appendMap(const string key,uint8_t val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+    
+            if (!cmp_write_uint(&cmp, val))
+                return false;
+            return true;
+        };
+    
+        bool appendMap(const string key,uint16_t val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+    
+            if (!cmp_write_uint(&cmp, val))
+                return false;
+            return true;
+        };
+    
+        bool appendMap(const string key,float val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+            
+            if (!isnan(val)){
+                if (!cmp_write_float(&cmp, val))
+                    return false;
+            } else {
+                if (!cmp_write_str(&cmp,"",0))
+                    return false;
+            }
+            return true;
+        };
+    
+        bool appendMap(const string key, const uint8_t * p, uint32_t sz, bool append=false) {
+            if (!cmp_write_str(&cmp, key.c_str(), key.length()))
+                return false;
+    
+            if (!cmp_write_bin_marker(&cmp, sz))
+                return false;
+            
+            if (append && sz < (sizeof(uint8_t) << (sizeof(uint8_t)*8)))
+                return appendBinary(p,(uint8_t)sz);
+            
+            return true;
+        };
+    
+        bool appendBinary(const uint8_t * p, size_t s) {
+            if (!cmp.write(&cmp, p, s))
+                return false;
+        
+            return true;
+        };
+    
+        void flush() {
+            if (_sending)
+                _stream->endPacket();
+            _sending = false;
+        };
+        
+        static void iter(const uint8_t &key,const string &val) {
+          printf("[%d] [%s] => [%s]\n",key,_khash((KEYS)(key/10)).c_str(),val.c_str());
+        };
+
+        static void _iter(const string &key,const string &val){
+          printf("[%s] => [%s]\n",key.c_str(),val.c_str());
+        };
+            
+        void print() {
+          printf("\n\nPrinting %d:\n",_numRecords);
+          hmap.iter(iter);
+        };
+
     protected:
         static enum KEYS  {
             SML_BASENAME_IDX,
@@ -107,7 +261,7 @@ class SenMLStream {
         };
         HashMap<uint8_t, string, NumKey> hmap;
 
-        uint8_t numRecords; // Number of records in message (excluding header)
+        uint8_t _numRecords; // Number of records in message (excluding header)
         bool _sending;      // True write message started
         cmp_ctx_t cmp;
         static bool stream_reader(cmp_ctx_t * ctx, void * data, size_t limit);
@@ -164,7 +318,7 @@ class SenMLStream {
                     return string("unk");
             }
         
-          return string("unk");  
+            return string("unk");  
         };
     
         // read a Map structure {a:b}    
@@ -277,160 +431,7 @@ class SenMLStream {
             put(k,v,r);
             #endif
         };
-        
-    public:
-        SenMLStream(StreamWrapper *stream);
-        void begin(int baud);
-        void reset() { numRecords = 0;  hmap.clear();};
-        bool available() { return numRecords > 0; };
-        uint8_t length() { return numRecords; };
-        bool loop();
-        
-        // Getters return values from hash in requested type
-        // Returns -1 if key absent; 0 if NULL; 1 if good
-        
-        int get(const string k, string &v,int r=0) {
-            uint8_t _k =key(k,r);
-            if (!hmap.get(_k,v))
-              return -1;
-            return (v == "null") ? 0 : 1;
-        };
-    
-        int get(const string k,  float &v,int r=0) {
-            uint8_t _key = key(k,r);
-            string _val;
-            if (!hmap.get(_key,_val))
-              return -1;
-            if (_val == "null")
-                return 0;
-            v = (float)stof(_val);
-            return (isnan(v)) ? 0 : 1;
-        };
-    
-        int get(const string k,  uint8_t &v,int r=0) {
-            uint8_t _key = key(k,r);
-            string _val;
-            if (!hmap.get(_key,_val))
-              return -1;
-            if (_val == "null")
-                return 0;
-            v = (uint8_t)stof(_val);
-            return (isnan(v)) ? 0 : 1;
-        };
-    
-        int get(const string k,  bool &v,int r=0) {
-            uint8_t _key = key(k,r);
-            string _val;
-            if (!hmap.get(_key,_val))
-              return -1;
-            if (_val == "null")
-                return 0;
-            v = (bool)stof(_val);
-            return (isnan(v)) ? 0 : 1;
-        };
-    
-        // Create new out going message
-        bool writeSenML(uint8_t numRecs = 1) {
-            
-            _stream->beginPacket();
-    
-            if (!cmp_write_array(&cmp, numRecs))
-                return false;
-    
-            _sending = true;
-            return true; 
-        };
-        
-        bool appendRecord(uint8_t nmaps) {
-            return cmp_write_map(&cmp, nmaps);
-        };
-    
-        bool appendMap(const string key,string val) {
-            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-                return false;
-            if (!cmp_write_str(&cmp,val.c_str(),val.length()))
-                return false;
-            return true;
-        };
-    
-        bool appendMap(const string key,bool val) {
-            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-                return false;
-            if (!cmp_write_bool(&cmp,val))
-                return false;
-            return true;
-        };
-    
-        bool appendMap(const string key,uint8_t val) {
-            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-                return false;
-    
-            if (!cmp_write_uint(&cmp, val))
-                return false;
-            return true;
-        };
-    
-        bool appendMap(const string key,uint16_t val) {
-            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-                return false;
-    
-            if (!cmp_write_uint(&cmp, val))
-                return false;
-            return true;
-        };
-    
-        bool appendMap(const string key,float val) {
-            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
-                return false;
-            
-            if (!isnan(val)){
-                if (!cmp_write_float(&cmp, val))
-                    return false;
-            } else {
-                if (!cmp_write_str(&cmp,"",0))
-                    return false;
-            }
-            return true;
-        };
-    
-        bool appendMap(const string key, const uint8_t * p, uint32_t sz, bool append=false){
-            if (!cmp_write_str(&cmp, key.c_str(), key.length()))
-                return false;
-    
-            if (!cmp_write_bin_marker(&cmp, sz))
-                return false;
-            
-            if (append && sz < (sizeof(uint8_t) << (sizeof(uint8_t)*8)))
-                return appendBinary(p,(uint8_t)sz);
-            
-            return true;
-        };
-    
-        bool appendBinary(const uint8_t * p, size_t s) {
-            if (!cmp.write(&cmp, p, s))
-                return false;
-        
-            return true;
-        };
-    
-        void flush() {
-            if (_sending)
-                _stream->endPacket();
-            _sending = false;
-        };
-        
-        static void iter(const uint8_t &key,const string &val) {
-          printf("[%d] [%s] => [%s]\n",key,_khash((KEYS)(key/10)).c_str(),val.c_str());
-        };
 
-        static void _iter(const string &key,const string &val){
-          printf("[%s] => [%s]\n",key.c_str(),val.c_str());
-        };
-            
-        void print() {
-          printf("\n\nPrinting %d:\n",numRecords);
-          hmap.iter(iter);
-        };
 };
 
 
@@ -600,7 +601,7 @@ class SenMLStreamAgSense: public SenMLStream {
                 if (!readString(k,SML_KEY_SIZE))
                     return false;
                 #ifdef SMLDEBUG
-                printf("GOT -> %s",k.c_str());
+                printf("GOT -> %s\n",k.c_str());
                 #endif
                 if (k == SML_VI) // Add support for custom types
                     return parseVI(r);
