@@ -59,15 +59,20 @@ void SenMLStream::begin(int baud){
 
 bool SenMLStream::parseField(string key,int r) {
     string sval;
-    float fval;
+    float fval = nanf("");
+    int res =0;
 
     if ( IS_KEY(key,SML_NAME) ||
          IS_KEY(key,SML_UNIT) ||
          IS_KEY(key,SML_LINK) ||
          IS_KEY(key,SML_STR_VALUE) ) {
-        if (!readString(sval,SML_VAL_SIZE))
+         res =readString(sval,SML_VAL_SIZE);
+         if (res == -1)
             return false;
-        put(key,sval,r);
+         if (!res)
+            put(key,string("null"),r);
+         else
+            put(key,sval,r);
     }
 
     if ( IS_KEY(key,SML_VALUE) ||
@@ -75,15 +80,16 @@ bool SenMLStream::parseField(string key,int r) {
          IS_KEY(key,SML_UPDATE_TIME) ||
          IS_KEY(key,SML_BOOL_VALUE) ||
          IS_KEY(key,SML_TIME) ) {
-        if (!readNumber(fval))
+         if (res == -1)
             return false;
-        put(key,fval,r);
+         if (!res)
+            put(key,string("\0"),r);
+         else
+            put(key,fval,r);
     }
     
     return true;  
 };
-
-
 
 
 bool SenMLStream::parseHeader() {
@@ -106,8 +112,6 @@ bool SenMLStream::parseHeader() {
 
     return msize >0;
 }
-
-
 
 
 bool SenMLStream::loop() {
@@ -136,7 +140,9 @@ bool SenMLStream::loop() {
             #endif
             numRecords++;
         }
+        #ifdef SMLDEBUG
         fflush(stdout); 
+        #endif
     }
     return available();
 }

@@ -15,7 +15,7 @@ int main(int argc, char **argv) {
     string key,val;
     float fval =0;
     bool bval = false;
-    
+    int res =0;
     while(1) {
         if (s.loop()){ // Must have record
             s.print();
@@ -37,8 +37,11 @@ int main(int argc, char **argv) {
             s.get(s.SML_BOOL_VALUE,bval,1);
             s.appendMap(s.SML_BOOL_VALUE,bval);
             
-            s.get(s.SML_VI_IRC,bval,2);
-            printf("IRC => %d\n",bval);
+            res = s.get(s.SML_VI_IRC,bval,2);
+            printf("IRC (%d) => %d \n",res,bval);
+
+            res = s.get(s.SML_VI_EXP,fval,2);
+            printf("EXP (%d) => %f\n",res,fval);
 
             s.flush();
 
