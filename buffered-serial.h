@@ -1,7 +1,7 @@
 #ifndef BUFFEREDSERIAL_H
 #define BUFFEREDSERIAL_H
 
-#include <linux-serial.h>
+#include "../arduino-serial/linux-serial.h"
 #include "FixedQueue.h"
 
 #define MAX_PACKET_SIZE 512

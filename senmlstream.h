@@ -7,14 +7,13 @@
 #include <string>
 using namespace std;
 #include "buffered-serial.h"
-#include "sys/types.h"
+#include <sys/types.h>
 #include <math.h>
 #include "../HashMap/src/HashMap.h"
 #include "cmp.h"
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
 #else // DUINO
-//      #define bool boolean
 #define stof(a) a.toFloat()
 #include <WSTring.h>
 #define string String
