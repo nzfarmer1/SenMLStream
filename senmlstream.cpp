@@ -81,6 +81,7 @@ bool SenMLStream::parseField(string key,int r) {
          IS_KEY(key,SML_UPDATE_TIME) ||
          IS_KEY(key,SML_BOOL_VALUE) ||
          IS_KEY(key,SML_TIME) ) {
+         res =readNumber(fval);
          if (res == -1)
             return false;
          if (!res)

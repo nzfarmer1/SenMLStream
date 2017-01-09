@@ -14,14 +14,15 @@ using namespace std;
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
 #else // DUINO
-#define stof(a) a.toFloat()
+
+    #define stof(a) a.toFloat()
 #include <WSTring.h>
 #define string String
 #include <HashMap.h>
 #include <math.h>
 #include <xarq.h>
 #include <cmp.h>
-#define StreamWrapper BufferedEscapedXStreamWrapper
+#define StreamWrapper BufferedEscapedXStream    Wrapper
 
 #endif
 
