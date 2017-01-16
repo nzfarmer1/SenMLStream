@@ -14,15 +14,15 @@ using namespace std;
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
 #else // DUINO
-
-    #define stof(a) a.toFloat()
+#define to_string(a) String(a)
+#define stof(a) a.toFloat()
 #include <WSTring.h>
 #define string String
 #include <HashMap.h>
 #include <math.h>
 #include <xarq.h>
 #include <cmp.h>
-#define StreamWrapper BufferedEscapedXStream    Wrapper
+#define StreamWrapper BufferedEscapedXStreamWrapper
 
 #endif
 
@@ -78,7 +78,8 @@ class SenMLStream {
         static const string SML_SUM_VALUE;
     
         
-        SenMLStream(StreamWrapper *stream);
+        SenMLStream(StreamWrapper *stream,string bn = "urn:dev:");
+        
         void begin(int baud);
         void reset() { _numRecords = 0;  hmap.clear();};
         bool available() { return _numRecords > 0; };
@@ -133,9 +134,11 @@ class SenMLStream {
             
             _stream->beginPacket();
     
-            if (!cmp_write_array(&cmp, numRecs))
+            if (!cmp_write_array(&cmp, numRecs+1))
                 return false;
-    
+            this->appendRecord(1); // 1 maps
+            this->appendMap(this->SML_BASENAME,this->_bn);
+            // Add additional
             _sending = true;
             return true; 
         };
@@ -277,6 +280,8 @@ class SenMLStream {
         virtual  uint8_t key(const string k,int r=0) = 0; 
         virtual string khash(uint8_t k) = 0;
         bool parseField(string key,int r);
+        
+        string _bn;
     
         static string _khash(KEYS k) { // Core
             switch(k) {
@@ -354,8 +359,12 @@ class SenMLStream {
             cmp_object_t obj;
             if (!cmp_read_object(&cmp, &obj))
                 return false;
-            #ifdef SMLDEBUG
+            #ifdef SMLDEBUG_LINUX
             printf("Read Number Got: %x\n",obj.type);
+            #endif
+            #ifdef SMLDEBUG
+            debug.print("Read Number Got: ");
+            debug.println(obj.type);
             #endif
                   
             switch(obj.type) {
@@ -387,7 +396,7 @@ class SenMLStream {
             string _v = v;
             uint8_t _k = key(k,r);
             hmap.put(_k,_v);
-            #ifdef SMLDEBUG
+            #ifdef SMLDEBUG_LINUX
             printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
             #endif
         };
@@ -505,7 +514,7 @@ class SenMLStreamAgSense: public SenMLStream {
         static const string SML_VI_RES;  // resolution hex
         static const string SML_VI_IRC;// IR Cut (boolean)
         
-        SenMLStreamAgSense(StreamWrapper * stream) : SenMLStream(stream) { reset(); }
+        SenMLStreamAgSense(StreamWrapper * stream,string bn = "urn:dev:") : SenMLStream(stream,bn) { reset(); }
         
         bool loop() {
             return  SenMLStream::loop();
@@ -566,7 +575,7 @@ class SenMLStreamAgSense: public SenMLStream {
             string  key;
             int     res =0;
             float   fval = 0;
-            #ifdef SMLDEBUG
+            #ifdef SMLDEBUG_LINUX
             printf("Parse VI\n");
             #endif 
             uint32_t maps = readMap();
@@ -578,7 +587,7 @@ class SenMLStreamAgSense: public SenMLStream {
                      IS_KEY(key,SML_VI_RES) ||
                      IS_KEY(key,SML_VI_IRC)) {
                    
-                    #ifdef SMLDEBUG
+                    #ifdef SMLDEBUG_LINUX
                     printf("Reading Key [%s]\n",key.c_str());
                     #endif
                     res = readNumber(fval);
@@ -612,7 +621,8 @@ class SenMLStreamAgSense: public SenMLStream {
                 if (!readString(k,SML_KEY_SIZE))
                     return false;
                 #ifdef SMLDEBUG
-                printf("GOT -> %s\n",k.c_str());
+                    debug.print("GOT -> " );
+                    debug.println(k.c_str());
                 #endif
                 if (k == SML_VI) // Add support for custom types
                     return parseVI(r);

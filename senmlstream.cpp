@@ -6,6 +6,7 @@
 #define KM(a,b) const string SenMLStream::a = string(b)
 
 
+
 KM(SML_BASENAME,"bn");
 KM(SML_BASETIME,"bt");
 KM(SML_BASEUNIT,"bu");
@@ -34,7 +35,6 @@ AKM(SML_VI_IRC,"irc");
 
 
 bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
-
     if (((StreamWrapper*) ctx->buf)->available(limit)) {
         return ((StreamWrapper*) ctx->buf)->read((uint8_t*)data,limit);
     }
@@ -46,9 +46,10 @@ size_t SenMLStream::stream_writer(cmp_ctx_t * ctx, const void * data, size_t cou
 }
 
 
-SenMLStream::SenMLStream(StreamWrapper * stream) : _stream(stream)  {
+SenMLStream::SenMLStream(StreamWrapper * stream,string bn) : _stream(stream)  {
     static_assert( (int)(END * 10) < (TABLE_SIZE-10),"Hash Table too small! Need to increase key ");
     _numRecords = 0;
+    this->_bn = bn;
     cmp_init(&cmp, (void*) _stream, SenMLStream::stream_reader, SenMLStream::stream_writer);
 }
 
@@ -85,11 +86,12 @@ bool SenMLStream::parseField(string key,int r) {
          if (res == -1)
             return false;
          if (!res)
-            put(key,string("\0"),r);
-         else
-            put(key,fval,r);
+            put(key,string("null"),r);
+         else{
+            sval = to_string((long double)fval);
+            put(key,sval,r);
+         }
     }
-    
     return true;  
 };
 
@@ -118,6 +120,7 @@ bool SenMLStream::parseHeader() {
 bool SenMLStream::loop() {
     uint32_t asize;
     
+    
     if (available()) // has existing map
         return true;
     
@@ -125,23 +128,33 @@ bool SenMLStream::loop() {
         return false;
     }
 
+
     // parse record
     for(uint32_t i=0;i<asize;i++){
         if (!i){
             if (!this->parseHeader())
                 return false;
-            #ifdef SMLDEBUG
+            #ifdef SMLDEBUG_LINUX
             printf("parsed header\n");
             #endif
+            #ifdef SMLDEBUG
+            debug.println("parsed header\n");
+            #endif
         } else {      
+            #ifdef SMLDEBUG
+            debug.println("parsing record\n");
+            #endif
             if (!this->parseRecord(i))
                 return false;
-            #ifdef SMLDEBUG
+            #ifdef SMLDEBUG_LINUX
             printf("parsed record %d\n",i);
+            #endif
+            #ifdef SMLDEBUG
+            debug.println("parsed record\n");
             #endif
             _numRecords++;
         }
-        #ifdef SMLDEBUG
+        #ifdef SMLDEBUG_LINUX
         fflush(stdout); 
         #endif
     }
