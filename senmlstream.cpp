@@ -88,7 +88,11 @@ bool SenMLStream::parseField(string key,int r) {
          if (!res)
             put(key,string("null"),r);
          else{
+            #ifdef _SIMULATOR
             sval = to_string((long double)fval);
+            #else
+            sval = string(fval);
+            #endif
             put(key,sval,r);
          }
     }
