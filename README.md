@@ -16,10 +16,13 @@ Uses msgpack encoding rather than JSON, and accepts SenML requests in SenML over
 
 Running tests
 
+- make test
+- Run arduino-serial/socat.sh *
 - cd  test && npm install .
-- Run arduino-serial/socat.sh
-- Run nodejs/client.js senml.js
-- Run test/test
+- Run test/test  *
+- Run nodejs/client.js -s &lt;fullpath to socket&gt; senml.js *
+
+* in seperate terminal session or disown
 
 Building:
 
