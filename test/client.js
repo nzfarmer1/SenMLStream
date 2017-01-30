@@ -1,13 +1,18 @@
-      const net = require("net");
-      const mp = require("msgpack5")();
-      const s = new require('stream').PassThrough({objectMode:true});
-      const bl = new require('bl');
-      const fs = require("fs");
-      const en = require("simplepacket").encode();
-      const dc = require("simplepacket").decode();
-      const stream = require("stream");
+    const net = require("net");
+    const mp = require("msgpack5")();
+    const s = new require('stream').PassThrough({objectMode:true});
+    const bl = new require('bl');
+    const fs = require("fs");
+    const stdio = require("stdio");
+    const stream = require("stream");
 
-      var obuffer = new stream.PassThrough();
+	var opts = stdio.getopt({
+    	'config': {key: 's', args: 1,mandatory:true, description: 'Socket File'},
+	});
+
+    console.log(opts);
+
+    var obuffer = new stream.PassThrough();
 
 
 // Initiate the source
@@ -21,86 +26,42 @@
      if (process.argv.length <= 2) {
 	error();
      } 
-     	en.on('data',(d)=>{
-		console.log(d);
-		msg = d;
-	});
-
-
      
-     var msg; 
-      try {	 
-      	var contents = fs.readFileSync(process.argv[2]);
-	var e = eval(contents.toString());
-	console.log(e);
-	console.log(mp.decode(mp.encode(e)));
-        en.end(mp.encode(e));
+      var msg; 
+      var contents = fs.readFileSync(opts.args[0]);
+	  var e = eval(contents.toString());
+      console.log(e);
+	    //console.log(mp.decode(mp.encode(e)));
+      msg = mp.encode(e);
 	
-	} catch (e) { 
-		error(e);
-	}
-
-	var buffer=Buffer(0);
-
-	
-      const socketPath = "/tmp/test.sock";
+      const socketPath = opts.config;
       const c = net.createConnection(socketPath);
       var conn;
       c.setTimeout(100);
-     /* c.on('timeout', () => {
-	if (buffer.length >5){
-	 try{
-	    process.stdout.write(mp.decode(buffer).toString() + "\n");
-	 } catch(e){
-		console.log(buffer);
-		console.log(buffer.length);
-		console.error(e);
-	} finally{
-	    buffer=[]	  
-	  }	
-	}
-	
-	});*/
+      c.on('close', (e) => {
+		console.log("error " + e.toString());
+			process.exit(0);
+        conn = null;
+        return;
+      });
       c.on('error', (e) => {
-	console.log("error " + e.toString());
-	process.exit(0);
+		console.log("error " + e.toString());
+			process.exit(0);
         conn = null;
         return;
       });
       c.on('connect', () => {
         conn = c;
         console.log("connected");
-	setInterval(()=>{
-	//console.log("sending");
+	console.log("Sending ...");
 	console.log(msg);
 	c.write(msg);
-	},5000);
+	setInterval(()=>{
+		//process.exit(0);
+	},1000);
       });
-      c.pipe(dc,{end:false});
-      dc.on('data',(data)=>{
-	buffer = Buffer.concat([buffer,data]);
+      c.on('data',(data)=>{
+	var sm =  mp.decode(data);
+	    console.log(sm);
+	    process.exit(0);
       }); 	
-      dc.on("flush", ()=>{
-	console.log("Flushing");
-	console.log(buffer);
-	var sm =  mp.decode(buffer);
-	console.log(sm);
-	if (sm[1].vd){
-	
-		//console.log(sm[1].vd.toString());
-		fs.writeFile("vd.jpg",sm[1].vd,(e)=>{console.log(e)});
-		}
-	buffer =Buffer(0);
-      });
-
-
-
-
-
-
-
-
-
-
-
-
