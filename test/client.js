@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
     const net = require("net");
     const mp = require("msgpack5")();
     const s = new require('stream').PassThrough({objectMode:true});
@@ -7,7 +9,8 @@
     const stream = require("stream");
 
 	var opts = stdio.getopt({
-    	'config': {key: 's', args: 1,mandatory:true, description: 'Socket File'},
+    	'socket': {key: 's', args: 1,mandatory:true, description: 'Socket File'},
+    	'noexit': {key: 'f', args: 0,mandatory:false, description: 'No exit after first response'},
 	});
 
     console.log(opts);
@@ -34,18 +37,17 @@
 	    //console.log(mp.decode(mp.encode(e)));
       msg = mp.encode(e);
 	
-      const socketPath = opts.config;
+      const socketPath = opts.socket;
       const c = net.createConnection(socketPath);
       var conn;
       c.setTimeout(100);
       c.on('close', (e) => {
-		console.log("error " + e.toString());
 			process.exit(0);
         conn = null;
         return;
       });
       c.on('error', (e) => {
-		console.log("error " + e.toString());
+		    console.log("error " + e.toString());
 			process.exit(0);
         conn = null;
         return;
@@ -63,5 +65,6 @@
       c.on('data',(data)=>{
 	var sm =  mp.decode(data);
 	    console.log(sm);
-	    process.exit(0);
+        if (!opts.noexit)
+	        process.exit(0);
       }); 	
