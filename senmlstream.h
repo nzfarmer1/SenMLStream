@@ -56,7 +56,12 @@ using namespace std;
 
 #define IS_KEY(k,v) (string(k) == v)
 
+
 class SenMLStream {
+
+    private:
+        float _lon,_lat, _alt;
+        bool  _hasPos() { return !(isnan(_lon) || isnan(_lon) || isnan(_alt)); };
 
     public:
         static const string SML_BASENAME;
@@ -76,15 +81,37 @@ class SenMLStream {
         static const string SML_TIME;
         static const string SML_LINK;
         static const string SML_SUM_VALUE;
+        static const string SML_PUBSUB;
     
-        
-        SenMLStream(StreamWrapper *stream,string bn = "urn:dev:");
+        SenMLStream(StreamWrapper *stream,string bn = "");
         
         void begin(int baud);
         void reset() { _numRecords = 0;  hmap.clear();};
         bool available() { return _numRecords > 0; };
+        StreamWrapper * stream();
+#ifdef _SIMULATOR // LINUX
+        bool busy() { return _sending; };
+#else
+        // Also check to see if underlying Serial stream is busy
+        bool busy() { return _sending || _stream->busy();  }; 
+#endif        
+
         uint8_t length() { return _numRecords; };
         bool loop();
+        
+        void setBN(string bn) {
+            this->_bn = bn;
+        }
+
+        string getBN() {
+            return this->_bn;
+        }
+        
+        void setPos(float lon, float lat, float alt){
+          this->_lon = lon;  
+          this->_lat = lat;  
+          this->_alt = alt;  
+        };
         
         // Getters return values from hash in requested type
         // Returns -1 if key absent; 0 if NULL; 1 if good
@@ -117,6 +144,28 @@ class SenMLStream {
             v = (uint8_t)stof(_val);
             return (isnan(v)) ? 0 : 1;
         };
+
+        int get(const string k,  uint16_t &v,int r=0) {
+            uint8_t _key = key(k,r);
+            string _val;
+            if (!hmap.get(_key,_val))
+              return -1;
+            if (_val == "null")
+                return 0;
+            v = (uint16_t)stof(_val);
+            return (isnan(v)) ? 0 : 1;
+        };
+
+        int get(const string k,  uint32_t &v,int r=0) {
+            uint8_t _key = key(k,r);
+            string _val;
+            if (!hmap.get(_key,_val))
+              return -1;
+            if (_val == "null")
+                return 0;
+            v = (uint32_t)stof(_val);
+            return (isnan(v)) ? 0 : 1;
+        };
     
         int get(const string k,  bool &v,int r=0) {
             uint8_t _key = key(k,r);
@@ -129,22 +178,50 @@ class SenMLStream {
             return (isnan(v)) ? 0 : 1;
         };
     
+        
         // Create new out going message
         bool writeSenML(uint8_t numRecs = 1) {
             
             _stream->beginPacket();
-    
+            
+            
             if (!cmp_write_array(&cmp, numRecs+1))
                 return false;
-            this->appendRecord(1); // 1 maps
+            uint8_t nm = _hasPos() ? 3 : 2;
+            this->appendRecord(nm); // 1 maps
+
             this->appendMap(this->SML_BASENAME,this->_bn);
-            // Add additional
+            if (_hasPos())
+                this->appendPos();
+	    #ifdef _SIMULATOR
+            this->appendMap(this->SML_BASETIME,to_string((long long unsigned int)time(NULL)));
+	    #else
+            this->appendMap(this->SML_BASETIME,millis());
+	    #endif
+           
+
             _sending = true;
             return true; 
         };
         
         bool appendRecord(uint8_t nmaps) {
             return cmp_write_map(&cmp, nmaps);
+        };
+
+        bool appendPos() {
+            if (!_hasPos())
+                return true;
+            if (!cmp_write_str(&cmp, "pos",3))
+                return false;
+            if (!cmp_write_array(&cmp, 3))
+                return false;
+            if (!cmp_write_float(&cmp, _lon))
+                return false;
+            if (!cmp_write_float(&cmp, _lat))
+                return false;
+            if (!cmp_write_float(&cmp, _alt))
+                return false;
+            return true;
         };
     
         bool appendMap(const string key,string val) {
@@ -180,6 +257,15 @@ class SenMLStream {
                 return false;
             return true;
         };
+
+        bool appendMap(const string key,uint32_t val) {
+            if (!cmp_write_str(&cmp, key.c_str(),key.length()))
+                return false;
+    
+            if (!cmp_write_uint(&cmp, val))
+                return false;
+            return true;
+        };
     
         bool appendMap(const string key,float val) {
             if (!cmp_write_str(&cmp, key.c_str(),key.length()))
@@ -199,11 +285,11 @@ class SenMLStream {
             if (!cmp_write_str(&cmp, key.c_str(), key.length()))
                 return false;
     
-            if (!cmp_write_bin_marker(&cmp, sz))
+            if (!cmp_write_bin_marker(&cmp,(uint32_t)sz))
                 return false;
             
-            if (append && sz < (sizeof(uint8_t) << (sizeof(uint8_t)*8)))
-                return appendBinary(p,(uint8_t)sz);
+            if (append)
+                return appendBinary(p,(size_t)sz);
             
             return true;
         };
@@ -225,9 +311,6 @@ class SenMLStream {
           printf("[%d] [%s] => [%s]\n",key,_khash((KEYS)(key/10)).c_str(),val.c_str());
         };
 
-        static void _iter(const string &key,const string &val){
-          printf("[%s] => [%s]\n",key.c_str(),val.c_str());
-        };
             
         void print() {
           printf("\n\nPrinting %d:\n",_numRecords);
@@ -253,8 +336,15 @@ class SenMLStream {
             SML_TIME_IDX,
             SML_LINK_IDX,
             SML_SUM_VALUE_IDX,
+            SML_PUBSUB_IDX,
             END} ikeys;
     
+        static void _iter(const string &key,const string &val){
+          printf("[%s] => [%s]\n",key.c_str(),val.c_str());
+        };
+    
+        
+        
     private:
         struct NumKey {
             unsigned long operator()(const uint8_t& k) const
@@ -319,6 +409,8 @@ class SenMLStream {
                     return SML_LINK;
                 case SML_SUM_VALUE_IDX:
                     return SML_SUM_VALUE;
+                case SML_PUBSUB_IDX:
+                    return SML_PUBSUB;
                 default:
                     return string("unk");
             }
@@ -340,8 +432,14 @@ class SenMLStream {
             cmp_object_t obj;
             char  _str[SML_MAX_STR];
 
+            #ifdef SMLDEBUG
+            debug.print("Read Object Got: ");
+            #endif
             if (!cmp_read_object(&cmp, &obj))
                 return -1;
+            #ifdef SMLDEBUG
+            debug.println(obj.type);
+            #endif
             
             if (obj.type == CMP_TYPE_NIL)
                 return 0;
@@ -350,7 +448,7 @@ class SenMLStream {
                 return -1;
             
             s = string(_str);
-                return 1;
+            return 1;
         };
     
         // read a Number (handle NULLS)
@@ -380,6 +478,27 @@ class SenMLStream {
                 case CMP_TYPE_UINT8:
                     f = (float)obj.as.u8;
                     break;
+                case CMP_TYPE_UINT16:
+                    f = (float)obj.as.u16;
+                    break;
+                case CMP_TYPE_UINT32:
+                    f = (float)obj.as.u32;
+                    break;
+                case CMP_TYPE_UINT64:
+                    f = (float)obj.as.u64;
+                    break;
+                case CMP_TYPE_SINT8:
+                    f = (float)obj.as.u8;
+                    break;
+                case CMP_TYPE_SINT16:
+                    f = (float)obj.as.s16;
+                    break;
+                case CMP_TYPE_SINT32:
+                    f = (float)obj.as.s32;
+                    break;
+                case CMP_TYPE_SINT64:
+                    f = (float)obj.as.s64;
+                    break;
                 case CMP_TYPE_NEGATIVE_FIXNUM:
                     f = (float) obj.as.s8;
                     break;
@@ -398,6 +517,11 @@ class SenMLStream {
             hmap.put(_k,_v);
             #ifdef SMLDEBUG_LINUX
             printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
+            #elif SMLDEBUG
+            debug.print("PUT ");
+            debug.print(k.c_str());
+            debug.print(" => ");
+            debug.println(v.c_str());
             #endif
         };
         
@@ -405,7 +529,7 @@ class SenMLStream {
             #ifdef _SIMULATOR
             put(k,to_string((long double)v),r);
             #else
-            put(k,v,r);
+            put(k,string(v),r);
             #endif
         };
     
@@ -413,7 +537,7 @@ class SenMLStream {
             #ifdef _SIMULATOR
             put(k,to_string((long long)v),r);  
             #else
-            put(k,v,r);
+            put(k,string(v),r);
             #endif
         };
     
@@ -421,7 +545,7 @@ class SenMLStream {
             #ifdef _SIMULATOR
             put(k,to_string((long long)v),r);  
             #else
-            put(k,v,r);
+            put(k,string(v),r);
             #endif
         };
     
@@ -429,7 +553,7 @@ class SenMLStream {
             #ifdef _SIMULATOR
             put(k,to_string((long long)v),r);  
             #else
-            put(k,v,r);
+            put(k,string(v),r);
             #endif
         };
     
@@ -437,7 +561,7 @@ class SenMLStream {
             #ifdef _SIMULATOR
             put(k,to_string((long long)v),r);  
             #else
-            put(k,v,r);
+            put(k,string(v),r);
             #endif
         };
 
@@ -513,8 +637,8 @@ class SenMLStreamAgSense: public SenMLStream {
         static const string SML_VI_EXP; // exposure int
         static const string SML_VI_RES;  // resolution hex
         static const string SML_VI_IRC;// IR Cut (boolean)
-        
-        SenMLStreamAgSense(StreamWrapper * stream,string bn = "urn:dev:") : SenMLStream(stream,bn) { reset(); }
+
+        SenMLStreamAgSense(StreamWrapper * stream,string bn = "") : SenMLStream(stream,bn) { reset(); }
         
         bool loop() {
             return  SenMLStream::loop();
@@ -577,20 +701,36 @@ class SenMLStreamAgSense: public SenMLStream {
             float   fval = 0;
             #ifdef SMLDEBUG_LINUX
             printf("Parse VI\n");
-            #endif 
+            #elif SMLDEBUG
+            debug.println("Parse VI");
+            #endif
+            
             uint32_t maps = readMap();
-            for(uint32_t j=0; j < maps;  j++){
-                if (readString(key,SML_KEY_SIZE) <=0)
+            #if SMLDEBUG
+            debug.print("Got Maps#  ");
+            debug.println(maps);
+            #endif
+            for(uint32_t j=0; j < maps;  j++) {
+                if (readString(key,SML_KEY_SIZE) <=0){
                     return false;
+                }
         
+                #ifdef SMLDEBUG_LINUX
+                printf("Reading Key [%s]\n",key.c_str());
+                #elif SMLDEBUG
+                debug.print("Reading Key  ");
+                debug.println(key.c_str());
+                #endif
+
                 if ( IS_KEY(key,SML_VI_EXP) ||
                      IS_KEY(key,SML_VI_RES) ||
                      IS_KEY(key,SML_VI_IRC)) {
                    
-                    #ifdef SMLDEBUG_LINUX
-                    printf("Reading Key [%s]\n",key.c_str());
-                    #endif
                     res = readNumber(fval);
+                    #if SMLDEBUG
+                    debug.print("Result  ");
+                    debug.println(res);
+                    #endif
                     if (res == -1)
                         return false;
                     
@@ -599,8 +739,13 @@ class SenMLStreamAgSense: public SenMLStream {
                         continue;
                     }
 
+                    #ifdef SMLDEBUG
+                    debug.print("Got:  ");
+                    debug.println((uint8_t)fval);
+                    #endif
+                    
                     if (IS_KEY(key,SML_VI_EXP))
-                        put(key,(int)fval,r);
+                        put(key,(uint8_t)fval,r);
                         
                     if (IS_KEY(key,SML_VI_RES))
                         put(key,(uint8_t)fval,r);

@@ -5,8 +5,6 @@
 
 #define KM(a,b) const string SenMLStream::a = string(b)
 
-
-
 KM(SML_BASENAME,"bn");
 KM(SML_BASETIME,"bt");
 KM(SML_BASEUNIT,"bu");
@@ -24,6 +22,7 @@ KM(SML_UPDATE_TIME,"ut");
 KM(SML_TIME,"t");
 KM(SML_LINK,"l");
 KM(SML_SUM_VALUE,"s");
+KM(SML_PUBSUB,"ps");
 
 #define AKM(a,b) const string SenMLStreamAgSense::a = string(b)
 
@@ -42,7 +41,10 @@ bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
 }
 
 size_t SenMLStream::stream_writer(cmp_ctx_t * ctx, const void * data, size_t count){
-        return ((StreamWrapper*) ctx->buf)->write((uint8_t*)data,count);
+        size_t w = ((StreamWrapper*) ctx->buf)->write((uint8_t*)data,count);
+        //debug.print("Bytes written");
+        //debug.println(w);
+        return w;
 }
 
 
@@ -50,12 +52,17 @@ SenMLStream::SenMLStream(StreamWrapper * stream,string bn) : _stream(stream)  {
     static_assert( (int)(END * 10) < (TABLE_SIZE-10),"Hash Table too small! Need to increase key ");
     _numRecords = 0;
     this->_bn = bn;
+    this->_lon = this->_lat = this->_alt = NAN;
     cmp_init(&cmp, (void*) _stream, SenMLStream::stream_reader, SenMLStream::stream_writer);
 }
 
 void SenMLStream::begin(int baud){
       _sending = false;
       _stream->begin(baud);
+}
+
+StreamWrapper * SenMLStream::stream() {
+    return _stream;
 }
 
 // Parse and individual field from the core 
@@ -81,13 +88,14 @@ bool SenMLStream::parseField(string key,int r) {
          IS_KEY(key,SML_SUM_VALUE) ||
          IS_KEY(key,SML_UPDATE_TIME) ||
          IS_KEY(key,SML_BOOL_VALUE) ||
-         IS_KEY(key,SML_TIME) ) {
+         IS_KEY(key,SML_TIME)  ||
+         IS_KEY(key,SML_PUBSUB) ) {
          res =readNumber(fval);
          if (res == -1)
             return false;
          if (!res)
             put(key,string("null"),r);
-         else{
+         else {
             #ifdef _SIMULATOR
             sval = to_string((long double)fval);
             #else
