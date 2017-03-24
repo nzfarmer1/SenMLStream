@@ -23,7 +23,7 @@ ifeq "$(OS)" "macosx"
 EXE_SUFFIX=
 
 CFLAGS+= $(ARCHS) -DMACOSX #  -DSERIALPORTDEBUG
-CFLAGS += -g -mmacosx-version-min=10.6 -DSMLDEBUG_LINUX
+CFLAGS += -g -mmacosx-version-min=10.6 -DSMLDEBUG_LINUX 
 LDFLAGS = -I../arduino-serial -L../arduino-serial
 CFLAGS_MONGOOSE=  -I./mongoose -pthread -g 
 CC=g++
@@ -39,31 +39,31 @@ CFLAGS_MONGOOSE = -I./mongoose -mthreads
 
 endif
 
-
 #################  Common  ##################################################
 
 CFLAGS += $(INCLUDES) -O -Wall -g -std=c++0x -D_SIMULATOR 
 
+SRCS = $(wildcard test/*.c)
 
-all: test
+PROGS = $(patsubst %.c,%,$(SRCS))
 
+OBJS = ../arduino-serial/arduino-serial-lib.o  senmlstream.o cmp.o
+
+all: $(PROGS)
 
 senmlstream: senmlstream.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o senmlstream.o senmlstream.cpp
 
 FixedQueue: FixedQueue.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o FixedQueue.o FixedQueue.h
-	
 
-test:   test/test.c senmlstream cmp.o  FixedQueue buffered-serial.h 
-	$(CC) $(CFLAGS) $(LDFLAGS) test/test.c -o test/test$(EXE_SUFFIX) buffered-serial.h  ../arduino-serial/arduino-serial-lib.o  senmlstream.o cmp.o 
+cmp:
+	$(CC) $(CFLAGS) -c $(@).c -o $(@).o
 
-
-.c.o:
-	$(CC) $(CFLAGS) -c $*.c -o $*.o
+%: %.c senmlstream  FixedQueue cmp
+	$(CC) $(CFLAGS) $(LDFLAGS)  $(@).c -o $(@) $(OBJS)
 
 
 clean:
-	rm -f $(OBJ)  *.o *.a
-	rm -f linux-serial test/test
-
+	rm -f  *.o *.a
+	rm -f $(PROGS)
