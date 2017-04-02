@@ -7,6 +7,8 @@
     const fs = require("fs");
     const stdio = require("stdio");
     const stream = require("stream");
+    const encode = require("simplepacket").encode;
+    const decode = require("simplepacket").decode;
 
 	var opts = stdio.getopt({
     	'socket': {key: 's', args: 1,mandatory:true, description: 'Socket File'},
@@ -16,6 +18,7 @@
     console.log(opts);
 
     var obuffer = new stream.PassThrough();
+    var ibuffer = encode();
 
 
 // Initiate the source
@@ -52,12 +55,14 @@
         conn = null;
         return;
       });
+      ibuffer.on('data',(d) => {console.log('x',d); c.write(d); });
       c.on('connect', () => {
         conn = c;
         console.log("connected");
 	console.log("Sending ...");
-	console.log(msg);
-	c.write(msg);
+	//console.log(msg);
+	ibuffer.write(msg);
+	ibuffer.flush();
 	setInterval(()=>{
 		//process.exit(0);
 	},1000);

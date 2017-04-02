@@ -44,12 +44,14 @@ endif
 CFLAGS += $(INCLUDES) -O -Wall -g -std=c++0x -D_SIMULATOR 
 
 SRCS = $(wildcard test/*.c)
+LIBS = $(wildcard *.c)
 
 PROGS = $(patsubst %.c,%,$(SRCS))
+MLIBS = $(patsubst X.c,X,$(LIBS))
 
-OBJS = ../arduino-serial/arduino-serial-lib.o  senmlstream.o cmp.o
+OBJS = ../arduino-serial/arduino-serial-lib.o  senmlstream.o cmp.o z85.o
 
-all: $(PROGS)
+all: $(MLIBS) $(PROGS)
 
 senmlstream: senmlstream.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o senmlstream.o senmlstream.cpp
@@ -57,10 +59,14 @@ senmlstream: senmlstream.h
 FixedQueue: FixedQueue.h
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o FixedQueue.o FixedQueue.h
 
-cmp:
+z85: z85.c z85.h
 	$(CC) $(CFLAGS) -c $(@).c -o $(@).o
 
-%: %.c senmlstream  FixedQueue cmp
+cmp: cmp.c cmp.h
+	$(CC) $(CFLAGS) -c $(@).c -o $(@).o
+
+
+%: %.c senmlstream  FixedQueue cmp z85 
 	$(CC) $(CFLAGS) $(LDFLAGS)  $(@).c -o $(@) $(OBJS)
 
 

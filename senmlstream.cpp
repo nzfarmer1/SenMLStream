@@ -37,14 +37,12 @@ bool SenMLStream::stream_reader(cmp_ctx_t * ctx, void * data, size_t limit){
     if (((StreamWrapper*) ctx->buf)->available(limit)) {
         return ((StreamWrapper*) ctx->buf)->read((uint8_t*)data,limit);
     }
+   
     return false;
 }
 
 size_t SenMLStream::stream_writer(cmp_ctx_t * ctx, const void * data, size_t count){
-        size_t w = ((StreamWrapper*) ctx->buf)->write((uint8_t*)data,count);
-        //debug.print("Bytes written");
-        //debug.println(w);
-        return w;
+        return ((StreamWrapper*) ctx->buf)->write((uint8_t*)data,count);
 }
 
 
@@ -54,9 +52,10 @@ SenMLStream::SenMLStream(StreamWrapper * stream,string bn) : _stream(stream)  {
     this->_bn = bn;
     this->_lon = this->_lat = this->_alt = NAN;
     cmp_init(&cmp, (void*) _stream, SenMLStream::stream_reader, SenMLStream::stream_writer);
+    (void)((StreamWrapper*) cmp.buf)->read();
 }
 
-void SenMLStream::begin(int baud){
+void SenMLStream::begin(uint32_t baud){
       _sending = false;
       _stream->begin(baud);
 }
@@ -67,9 +66,21 @@ StreamWrapper * SenMLStream::stream() {
 
 // Parse and individual field from the core 
 bool SenMLStream::parseField(string key,int r) {
+    uint8_t sdat[SML_MAX_STR];
     string sval;
     float fval = 0;
-    int res =0;
+    int8_t res =0;
+    int16_t dres =0;
+
+    if ( IS_KEY(key,SML_DATA_VALUE)) {
+         dres =readData(sdat,SML_VAL_SIZE);
+         if (dres == -1)
+            return false;
+         if (!dres)
+            put(key,string("null"),r);
+         else
+            put(key,sdat,dres,r);
+    }
 
     if ( IS_KEY(key,SML_NAME) ||
          IS_KEY(key,SML_UNIT) ||
@@ -132,7 +143,7 @@ bool SenMLStream::parseHeader() {
 bool SenMLStream::loop() {
     uint32_t asize;
     
-    
+
     if (available()) // has existing map
         return true;
     
@@ -146,27 +157,27 @@ bool SenMLStream::loop() {
         if (!i){
             if (!this->parseHeader())
                 return false;
-            #ifdef SMLDEBUG_LINUX
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
             printf("parsed header\n");
             #endif
-            #ifdef SMLDEBUG
+            #if defined(XDEBUG) && (__SMLDEBUG)
             debug.println("parsed header\n");
             #endif
         } else {      
-            #ifdef SMLDEBUG
+            #if defined(XDEBUG) && (__SMLDEBUG)
             debug.println("parsing record\n");
             #endif
             if (!this->parseRecord(i))
                 return false;
-            #ifdef SMLDEBUG_LINUX
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
             printf("parsed record %d\n",i);
             #endif
-            #ifdef SMLDEBUG
+            #if defined(XDEBUG) && (__SMLDEBUG)
             debug.println("parsed record\n");
             #endif
             _numRecords++;
         }
-        #ifdef SMLDEBUG_LINUX
+        #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
         fflush(stdout); 
         #endif
     }

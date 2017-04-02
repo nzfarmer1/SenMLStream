@@ -20,6 +20,7 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
     BufferedEscapedLinuxSerialWrapper() : LinuxSerial() {
         inPacket = false;
         isPacket=false;
+        isDLE = false;
         q.clear();
     };
     
@@ -47,23 +48,25 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
         return q.count();
         
       if (!LinuxSerial::available())
-            return 0;
+            return 0;   
 
         c = (uint8_t)LinuxSerial::read();
         if (q.isFull()){
             inPacket = false;
             q.clear();
         }
-        
-        switch ((uint8_t)c){ 
+        if (isControl(c) && inPacket && isDLE){
+            q.enqueue((uint8_t)c);
+        } else switch ((uint8_t)c) { 
             case DLE:
                 if (inPacket)
-                    q.enqueue((uint8_t)LinuxSerial::read());
+                    isDLE = true;
                 break;
             case BEG:
                 q.clear();
                 inPacket = true;
                 isPacket = false;
+                isDLE = false;
                 break;
             case END:
                 if (q.count() >0) {
@@ -122,6 +125,7 @@ class BufferedEscapedLinuxSerialWrapper : public LinuxSerial {
   private:
     bool isPacket;
     bool inPacket;
+    bool isDLE;
     
     static bool isControl(uint8_t c){
         return (c == DLE || c == BEG || c == END);

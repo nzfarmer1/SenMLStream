@@ -1,7 +1,7 @@
 #ifndef FIXEDQUEUE_H
 #define FIXEDQUEUE_H
 
-#include "Stream.h"
+#include "../arduino-serial/Stream.h"
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>

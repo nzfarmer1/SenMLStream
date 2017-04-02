@@ -1,4 +1,4 @@
-
+#pragma once
 #ifndef SENMLSTREAM_H
 #define SENMLSTREAM_H
 
@@ -9,8 +9,10 @@ using namespace std;
 #include "buffered-serial.h"
 #include <sys/types.h>
 #include <math.h>
+#include <assert.h>
 #include "../HashMap/src/HashMap.h"
 #include "cmp.h"
+
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
 #else // DUINO
@@ -21,7 +23,10 @@ using namespace std;
 #include <HashMap.h>
 #include <math.h>
 #include <xarq.h>
+extern "C"{
 #include <cmp.h>
+};
+
 #define StreamWrapper BufferedEscapedXStreamWrapper
 
 #endif
@@ -51,8 +56,8 @@ using namespace std;
 
 #define MAX_SENML_RECS 4
 #define SML_KEY_SIZE 4
-#define SML_VAL_SIZE 254
-#define SML_MAX_STR 254
+#define SML_VAL_SIZE 255
+#define SML_MAX_STR 255
 
 #define IS_KEY(k,v) (string(k) == v)
 
@@ -85,7 +90,7 @@ class SenMLStream {
     
         SenMLStream(StreamWrapper *stream,string bn = "");
         
-        void begin(int baud);
+        void begin(uint32_t baud);
         void reset() { _numRecords = 0;  hmap.clear();};
         bool available() { return _numRecords > 0; };
         StreamWrapper * stream();
@@ -113,8 +118,92 @@ class SenMLStream {
           this->_alt = alt;  
         };
         
-        // Getters return values from hash in requested type
-        // Returns -1 if key absent; 0 if NULL; 1 if good
+        /** 
+         * convert uint8_t * to string. keep track of length
+         **/
+        static uint16_t encode(const uint8_t *st,string &s,uint16_t len){
+            if (!len)
+                return 0;
+            const char ESC  = 0x23;
+            const char ZERO = 0x24;
+            char *sc = (char*) malloc(len*2+3);
+            assert(sc !=NULL);
+            memcpy(sc+2+len,st,len);
+            sc[len] = (uint8_t)len >>8;
+            sc[len+1] = (uint8_t)len;
+            uint16_t j=0;
+            for(uint16_t i=0;i<len+2;i++,j++){
+                if (sc[i+len] == ESC){
+                    sc[j] = ESC;
+                    sc[++j]= ESC;
+                    continue;
+                }
+                if (!sc[i+len]) {
+                    sc[j] = ESC;
+                    sc[++j] =ZERO;
+                    continue;
+                }
+                sc[j] = sc[i+len]; 
+            }
+            sc[j]='\0';
+	    #ifdef _SIMULATOR
+            s = string((char *)sc);
+	    #else	
+            s = to_string((char *)sc);
+	    #endif
+
+            free(sc);
+            return j;
+        };
+
+        /** 
+         * convert encoded uint8_t * as string back to uint8_t.
+         **/
+        
+        static uint16_t decode(const string &s,uint8_t *v) {
+            const char ESC  = 0x23;
+            const char ZERO = 0x24;
+            const char *sc= s.c_str();
+            uint16_t j=0;
+            uint16_t slen = strlen(sc);
+            uint16_t len =0;
+            
+            if (!slen)
+                return 0;
+             
+            for(uint16_t i=0;i<slen;i++){
+                if (sc[i] == ESC) {
+                    v[j] = (sc[i+1] == ZERO) ? 0 : sc[i+1];
+                    ++i;
+                } else {
+                    v[j] = sc[i];
+                }
+                if (j == 2 && len ==0){
+                    len  = v[0] << 8;
+                    len |= v[1];
+                    j=0;
+                    i--;
+                } else {
+                    j++;
+                }
+            }
+            return len;
+        }
+
+
+        int get(const string k, uint8_t *v,uint16_t &len,int r=0) {
+            uint8_t _k = key(k,r);
+            string s;
+
+            if (!hmap.get(_k,s)){
+                len = 0;
+                return -1;
+            }
+            
+            len = decode(s,v);
+            return  len > 0;
+        };
+
         
         int get(const string k, string &v,int r=0) {
             uint8_t _k =key(k,r);
@@ -148,8 +237,9 @@ class SenMLStream {
         int get(const string k,  uint16_t &v,int r=0) {
             uint8_t _key = key(k,r);
             string _val;
-            if (!hmap.get(_key,_val))
+            if (!hmap.get(_key,_val)){
               return -1;
+            }
             if (_val == "null")
                 return 0;
             v = (uint16_t)stof(_val);
@@ -184,9 +274,9 @@ class SenMLStream {
             
             _stream->beginPacket();
             
-            
             if (!cmp_write_array(&cmp, numRecs+1))
                 return false;
+
             uint8_t nm = _hasPos() ? 3 : 2;
             this->appendRecord(nm); // 1 maps
 
@@ -196,10 +286,9 @@ class SenMLStream {
 	    #ifdef _SIMULATOR
             this->appendMap(this->SML_BASETIME,to_string((long long unsigned int)time(NULL)));
 	    #else
-            this->appendMap(this->SML_BASETIME,millis());
+            this->appendMap(this->SML_BASETIME,xmillis());
 	    #endif
            
-
             _sending = true;
             return true; 
         };
@@ -308,12 +397,16 @@ class SenMLStream {
         };
         
         static void iter(const uint8_t &key,const string &val) {
+        #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
           printf("[%d] [%s] => [%s]\n",key,_khash((KEYS)(key/10)).c_str(),val.c_str());
+        #endif
         };
 
             
         void print() {
+        #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
           printf("\n\nPrinting %d:\n",_numRecords);
+         #endif 
           hmap.iter(iter);
         };
 
@@ -340,7 +433,9 @@ class SenMLStream {
             END} ikeys;
     
         static void _iter(const string &key,const string &val){
-          printf("[%s] => [%s]\n",key.c_str(),val.c_str());
+        #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
+            printf("[%s] => [%s]\n",key.c_str(),val.c_str());
+        #endif
         };
     
         
@@ -426,18 +521,50 @@ class SenMLStream {
             
             return msize;
         };
+
+        // read a String (handle NULLS)
+        int16_t readData(uint8_t *s,uint32_t sz) {
+            cmp_object_t obj;
+
+            #if defined(XDEBUG) && (__SMLDEBUG)
+            debug.print("Read Object Got: ");
+            #endif
+            if (!cmp_read_object(&cmp, &obj))
+                return -1;
+            #if defined(XDEBUG) && (__SMLDEBUG)
+                debug.println(obj.type);
+            #endif
+            
+            if (obj.type == CMP_TYPE_NIL || obj.type != CMP_TYPE_BIN8)
+                return 0;
+            sz = obj.as.bin_size;
+
+            if ( sz > SML_MAX_STR)
+                return -1;
+            
+            if (!cmp.read(&cmp, (void*)s, sz)) {
+              return false;
+            }
+            return sz;
+        }
     
         // read a String (handle NULLS)
         int readString(string &s,uint32_t sz) {
             cmp_object_t obj;
             char  _str[SML_MAX_STR];
 
-            #ifdef SMLDEBUG
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
+            printf("Read Object Got: ");
+            #endif
+            #if defined(XDEBUG) && (__SMLDEBUG)
             debug.print("Read Object Got: ");
             #endif
             if (!cmp_read_object(&cmp, &obj))
                 return -1;
-            #ifdef SMLDEBUG
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
+            printf("%x\n",obj.type);
+            #endif
+            #if defined(XDEBUG) && (__SMLDEBUG)
             debug.println(obj.type);
             #endif
             
@@ -457,10 +584,10 @@ class SenMLStream {
             cmp_object_t obj;
             if (!cmp_read_object(&cmp, &obj))
                 return false;
-            #ifdef SMLDEBUG_LINUX
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
             printf("Read Number Got: %x\n",obj.type);
             #endif
-            #ifdef SMLDEBUG
+            #if defined(XDEBUG) && (__SMLDEBUG)
             debug.print("Read Number Got: ");
             debug.println(obj.type);
             #endif
@@ -512,19 +639,21 @@ class SenMLStream {
         };
     
         void put(const string k, const string &v,int r=0) {
-            string _v = v;
             uint8_t _k = key(k,r);
-            hmap.put(_k,_v);
-            #ifdef SMLDEBUG_LINUX
+            hmap.put(_k,v);
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
             printf("PUT [%s] =>[%s]\n",k.c_str(),v.c_str());
-            #elif SMLDEBUG
-            debug.print("PUT ");
+            #elif defined (XDEBUG) && (__SMLDEBUG)
+            debug.print("SML PUT ");
             debug.print(k.c_str());
             debug.print(" => ");
             debug.println(v.c_str());
+            debug.print("Record: ");
+            debug.println(r);
             #endif
         };
         
+
         void put(const string k, const float &v,int r=0) {
             #ifdef _SIMULATOR
             put(k,to_string((long double)v),r);
@@ -540,7 +669,17 @@ class SenMLStream {
             put(k,string(v),r);
             #endif
         };
-    
+
+        
+        void put(const string k,  const uint8_t *p,uint16_t len,int r=0) {
+            string s;
+            if (!len)
+                put(k,string('\0'),r);  
+            encode(p,s,len); // Encode uint8_t as C++ String sans '\0'
+            put(k,string(s),r);
+        };
+
+
         void put(const string k, const uint8_t &v,int r=0) {
             #ifdef _SIMULATOR
             put(k,to_string((long long)v),r);  
@@ -699,14 +838,14 @@ class SenMLStreamAgSense: public SenMLStream {
             string  key;
             int     res =0;
             float   fval = 0;
-            #ifdef SMLDEBUG_LINUX
+            #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
             printf("Parse VI\n");
-            #elif SMLDEBUG
+            #elif defined (XDEBUG) && (__SMLDEBUG)
             debug.println("Parse VI");
             #endif
             
             uint32_t maps = readMap();
-            #if SMLDEBUG
+            #if defined (XDEBUG) && (__SMLDEBUG)
             debug.print("Got Maps#  ");
             debug.println(maps);
             #endif
@@ -715,9 +854,9 @@ class SenMLStreamAgSense: public SenMLStream {
                     return false;
                 }
         
-                #ifdef SMLDEBUG_LINUX
+                #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
                 printf("Reading Key [%s]\n",key.c_str());
-                #elif SMLDEBUG
+                #elif defined (XDEBUG) && (__SMLDEBUG)
                 debug.print("Reading Key  ");
                 debug.println(key.c_str());
                 #endif
@@ -727,7 +866,7 @@ class SenMLStreamAgSense: public SenMLStream {
                      IS_KEY(key,SML_VI_IRC)) {
                    
                     res = readNumber(fval);
-                    #if SMLDEBUG
+                    #if defined (XDEBUG) && (__SMLDEBUG)
                     debug.print("Result  ");
                     debug.println(res);
                     #endif
@@ -739,7 +878,7 @@ class SenMLStreamAgSense: public SenMLStream {
                         continue;
                     }
 
-                    #ifdef SMLDEBUG
+                    #if defined(XDEBUG) && (__SMLDEBUG)
                     debug.print("Got:  ");
                     debug.println((uint8_t)fval);
                     #endif
@@ -762,10 +901,15 @@ class SenMLStreamAgSense: public SenMLStream {
             string k;
             uint32_t maps = readMap();
             for(uint32_t j=0; j< maps; j++) {
-        
+
                 if (!readString(k,SML_KEY_SIZE))
                     return false;
-                #ifdef SMLDEBUG
+
+                #if defined(XDEBUG) && (__SMLDEBUG_LINUX)
+                    printf("GOT -> " );
+                    printf("%s\n",k.c_str());
+                #endif
+                #if defined(XDEBUG) && (__SMLDEBUG)
                     debug.print("GOT -> " );
                     debug.println(k.c_str());
                 #endif
