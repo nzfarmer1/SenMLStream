@@ -15,6 +15,7 @@ using namespace std;
 
 #define StreamWrapper BufferedEscapedLinuxSerialWrapper
 
+
 #else // DUINO
 #define to_string(a) String(a)
 #define stof(a) a.toFloat()
@@ -270,7 +271,11 @@ class SenMLStream {
     
         
         // Create new out going message
-        bool writeSenML(uint8_t numRecs = 1) {
+        bool writeSenML(uint8_t numRecs = 1, string bn = "") {
+            
+            if (bn == ""){
+                bn = this->_bn; // Override but do not change default
+            }
             
             _stream->beginPacket();
             
@@ -280,7 +285,7 @@ class SenMLStream {
             uint8_t nm = _hasPos() ? 3 : 2;
             this->appendRecord(nm); // 1 maps
 
-            this->appendMap(this->SML_BASENAME,this->_bn);
+            this->appendMap(this->SML_BASENAME,bn);
             if (_hasPos())
                 this->appendPos();
 	    #ifdef _SIMULATOR
@@ -393,6 +398,9 @@ class SenMLStream {
         void flush() {
             if (_sending)
                 _stream->endPacket();
+#ifdef _SIMULATOR // LINUX
+             _stream->flush();
+#endif
             _sending = false;
         };
         
@@ -594,6 +602,7 @@ class SenMLStream {
                   
             switch(obj.type) {
                 case CMP_TYPE_POSITIVE_FIXNUM:
+                    printf("xxx %d\n",obj.as.u8);
                     f = (float) obj.as.u8; 
                     break;
                 case CMP_TYPE_FLOAT:

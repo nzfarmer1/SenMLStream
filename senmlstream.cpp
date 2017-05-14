@@ -90,9 +90,9 @@ bool SenMLStream::parseField(string key,int r) {
          if (res == -1)
             return false;
          if (!res)
-            put(key,string("null"),r);
+            put(key,string("\0"),r);
          else
-            put(key,sval,r);
+            put(key,sval,r);    
     }
 
     if ( IS_KEY(key,SML_VALUE) ||
@@ -128,11 +128,14 @@ bool SenMLStream::parseHeader() {
         msize++;
         if (!readString(k,SML_KEY_SIZE))
             return false;
-        
+
         if (k == SML_BASENAME) {
-            if (!readString(v,SML_VAL_SIZE))
-                return false;
-            put(SML_BASENAME,v);
+            if (readString(v,SML_VAL_SIZE) >0){
+                put(SML_BASENAME,v);
+            }
+            else {   
+                put(SML_BASENAME,string("\0"));
+            }
         }
     }
 

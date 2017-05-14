@@ -6,26 +6,25 @@
 
 BufferedEscapedLinuxSerialWrapper b;
 
-
 uint8_t buff[32];
-    
 int main(int argc, char **argv) {
     SenMLStreamAgSense s(&b);
     s.begin(9600);
+    printf("Startup\n");
+    s.setBN(string("urn:dev:xbee:0xFF"));
     string key,val;
     float fval =0;
     bool bval = false;
-    int res =0;
+    string bn,ibn;
+    int res;
     while(1) {
         if (s.loop()){ // Must have record
+            printf("Got message");
             s.print();
             printf("done print\n");
-            s.writeSenML(2); //  header + 1 extra record
-            
-            s.get(s.SML_BASENAME,val);
-            s.appendRecord(1); // 1 maps
-            s.appendMap(s.SML_BASENAME,val);
-
+            res = s.get(s.SML_BASENAME,ibn));
+            s.writeSenML(1,ibn); //  header + 1 extra record. if ibn == "" default bn used
+      
             s.appendRecord(3); // 3 maps
 
             s.get(s.SML_NAME,val,1);
@@ -37,16 +36,9 @@ int main(int argc, char **argv) {
             s.get(s.SML_BOOL_VALUE,bval,1);
             s.appendMap(s.SML_BOOL_VALUE,bval);
             
-            res = s.get(s.SML_VI_IRC,bval,2);
-            printf("IRC (%d) => %d \n",res,bval);
-
-            res = s.get(s.SML_VI_EXP,fval,2);
-            printf("EXP (%d) => %f\n",res,fval);
-
             s.flush();
 
             s.reset();
-            printf("done reset\n\n\n\n");
         }
     }
     return 0;
