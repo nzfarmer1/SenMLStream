@@ -19,7 +19,7 @@ using namespace std;
 #else // DUINO
 #define to_string(a) String(a)
 #define stof(a) a.toFloat()
-#include <WSTring.h>
+#include <WString.h>
 #define string String
 #include <HashMap.h>
 #include <math.h>
@@ -158,7 +158,7 @@ class SenMLStream {
         };
 
         /** 
-         * convert encoded uint8_t * as string back to uint8_t.
+         * convert encoded uint8_t * as string back to uint8_t*.
          **/
         
         static uint16_t decode(const string &s,uint8_t *v) {
@@ -271,10 +271,12 @@ class SenMLStream {
     
         
         // Create new out going message
-        bool writeSenML(uint8_t numRecs = 1, string bn = "") {
-            
-            if (bn == ""){
-                bn = this->_bn; // Override but do not change default
+        bool writeSenML(const uint8_t numRecs = 1, const string bn = "") {
+            string tbn = bn;
+
+            if (tbn == ""){
+		if (this->get(SML_BASENAME,tbn) <=0 || tbn == "")
+                	tbn = this->getBN(); // Override but do not change default
             }
             
             _stream->beginPacket();
@@ -282,10 +284,10 @@ class SenMLStream {
             if (!cmp_write_array(&cmp, numRecs+1))
                 return false;
 
-            uint8_t nm = _hasPos() ? 3 : 2;
+            uint8_t nm = _hasPos() ? 3 : 2; // Add GPS coords if nec.
             this->appendRecord(nm); // 1 maps
 
-            this->appendMap(this->SML_BASENAME,bn);
+            this->appendMap(this->SML_BASENAME,tbn);
             if (_hasPos())
                 this->appendPos();
 	    #ifdef _SIMULATOR
@@ -293,7 +295,6 @@ class SenMLStream {
 	    #else
             this->appendMap(this->SML_BASETIME,xmillis());
 	    #endif
-           
             _sending = true;
             return true; 
         };

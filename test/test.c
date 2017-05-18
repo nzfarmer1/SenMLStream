@@ -16,14 +16,12 @@ int main(int argc, char **argv) {
     float fval =0;
     bool bval = false;
     string bn,ibn;
-    int res;
     while(1) {
         if (s.loop()){ // Must have record
             printf("Got message");
             s.print();
             printf("done print\n");
-            res = s.get(s.SML_BASENAME,ibn));
-            s.writeSenML(1,ibn); //  header + 1 extra record. if ibn == "" default bn used
+            s.writeSenML(1); //  header + 1 extra record. if ibn == "" default bn used
       
             s.appendRecord(3); // 3 maps
 
